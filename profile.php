@@ -629,7 +629,7 @@ $conn->close();
                         <div class="profile-tab-content" id="tab-music" style="display: none;">
                             <div class="profile-music">
                                 <div class="profile-music-player">
-                                    <img src="assets/music-cover.jpg" alt="Music" class="music-cover">
+                                    <img src="assets/music-cover.webp" alt="Music" class="music-cover">
                                     <div class="music-info">
                                         <div class="music-title">Profile Song</div>
                                         <div class="music-artist"><?php echo htmlspecialchars($profile_user['username']); ?>'s selection</div>

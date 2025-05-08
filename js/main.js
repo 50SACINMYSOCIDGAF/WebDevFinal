@@ -73,32 +73,50 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 300);
     }
-    
-    /**
-     * CSRF token handling for AJAX requests
-     */
-    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
-    
+
     /**
      * Helper to make AJAX requests with proper CSRF handling
      * @param {string} url - The endpoint URL
      * @param {Object} options - Request options
-     * @returns {Promise} - Fetch promise
+     * @returns {Promise<Object>} - Fetch promise resolving with parsed JSON
      */
     window.fetchWithCSRF = function(url, options = {}) {
+        const csrfToken = document.querySelector('input[name="csrf_token"]')?.value; // Get token if needed
+
         // Default options
         options.headers = options.headers || {};
         options.headers['X-CSRF-Token'] = csrfToken;
-        
+        // *** ADD THIS LINE: Identify the request as AJAX ***
+        options.headers['X-Requested-With'] = 'XMLHttpRequest';
+
+        // Ensure credentials are sent if needed (e.g., for sessions)
+        options.credentials = options.credentials || 'same-origin';
+
         return fetch(url, options)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    // Attempt to get more info for non-OK responses
+                    return response.text().then(text => {
+                        console.error(`HTTP error! Status: ${response.status}, Response: ${text}`);
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    });
                 }
-                return response.json();
+                // Check content type before parsing JSON
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    return response.json(); // Parse JSON only if header is correct
+                } else {
+                    // Handle cases where server didn't send JSON
+                    return response.text().then(text => {
+                        console.error("Received non-JSON response:", text);
+                        throw new Error("Server did not return JSON.");
+                    });
+                }
             })
             .catch(error => {
-                console.error('Fetch error:', error);
+                // Log fetch errors (network, CORS) or processing errors
+                console.error('Fetch error in fetchWithCSRF:', error);
+                // Re-throw the error so calling code's .catch block is triggered
                 throw error;
             });
     };

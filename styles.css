@@ -2650,3 +2650,228 @@ input::placeholder, textarea::placeholder {
         grid-template-columns: 1fr;
     }
 }
+
+/* === Styles for Customize Page === */
+
+.customize-header h1 {
+    margin-bottom: 0.5rem;
+}
+.customize-header p {
+    color: var(--text-secondary);
+}
+
+.customize-grid {
+    display: grid;
+    /* Creates 2 columns on wider screens, 1 on smaller */
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem; /* Spacing between cards */
+    max-width: 1200px; /* Adjust as needed */
+    margin: 2rem auto; /* Centers the grid */
+}
+
+/* Ensure sections behave as cards */
+.customize-section {
+    /* Inherits .card styles now */
+}
+
+.form-group {
+    margin-bottom: 1rem; /* Consistent spacing */
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.form-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+/* Style file inputs */
+.file-input-container {
+    margin-top: 0.5rem;
+}
+/* Hides the default file input visually but keeps it accessible */
+.file-input {
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    position: absolute;
+    z-index: -1;
+}
+/* Style the label like a button */
+.file-input + label {
+    /* Inherits .btn styles */
+    display: inline-flex; /* Make it behave like a button */
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.background-preview {
+    margin-bottom: 1rem;
+    border: 1px dashed var(--border); /* Dashed border for drop area feel */
+    border-radius: 8px;
+    min-height: 150px; /* Ensure it has some height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden; /* Ensure image fits */
+    background-color: var(--bg-tertiary);
+    position: relative; /* For potential overlays */
+}
+.background-preview img {
+    max-width: 100%;
+    max-height: 250px;
+    object-fit: cover;
+    display: block;
+}
+.empty-preview {
+    color: var(--text-secondary);
+    text-align: center;
+    display: flex; /* Use flex to align icon and text */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.empty-preview i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.remove-background {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+}
+.remove-background label {
+    margin-bottom: 0; /* Override default label margin */
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+.remove-background input {
+    width: auto; /* Override default input width */
+    margin-right: 0.5rem;
+    accent-color: var(--accent); /* Style checkbox */
+}
+
+.music-preview {
+    margin-top: 1rem;
+}
+
+.code-input { /* Style textarea for CSS */
+    font-family: monospace;
+    background-color: var(--bg-tertiary); /* Darker background for code */
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    min-height: 150px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+/* Preview Section Styles */
+.customize-preview-container {
+    margin: 3rem auto; /* Add more space above preview */
+    max-width: 1200px;
+    /* Use card styles for consistency */
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+.preview-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+.preview-frame {
+    width: 100%;
+    height: 600px; /* Increased height */
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fff; /* Give iframe a default background */
+}
+.preview-help {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Form Actions (Save/Cancel) */
+.form-actions {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 1rem;
+}
+
+/* Spectrum Color Picker Adjustments */
+.sp-replacer {
+    padding: 0;
+    border: none;
+    background: transparent;
+    display: inline-block;
+    vertical-align: middle; /* Align with label */
+    margin-left: 5px; /* Space from label */
+    box-shadow: none;
+}
+.sp-preview {
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    margin-right: 5px;
+}
+.sp-preview-inner {
+    border-radius: 3px; /* Match outer radius */
+}
+
+.sp-dd { display: none; } /* Hide dropdown arrow */
+
+.sp-input {
+    height: 32px; /* Match height */
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 0 8px;
+    width: 90px; /* Adjust width */
+    vertical-align: middle;
+}
+/* Ensure picker container doesn't add extra space */
+.sp-container {
+    display: inline-block;
+}
+/* Align the whole group better */
+.form-group .sp-container {
+    margin-left: 0; /* Reset margin if needed */
+}
+.form-group > label + .sp-replacer,
+.form-group > label + input[type=text].color-picker {
+    vertical-align: middle; /* Align picker trigger with label */
+    margin-left: 10px;
+}
