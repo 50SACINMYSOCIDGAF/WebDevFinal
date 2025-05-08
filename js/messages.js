@@ -49,59 +49,71 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error loading conversations:', error);
             });
     }
-    
+
     /**
      * Render the conversations list
      * @param {Array} conversationsData - List of conversation data
      */
     function renderConversations(conversationsData) {
         if (!conversationsList) return;
-        
+
         if (conversationsData.length === 0) {
+            // Use the more structured empty state, similar to friends.php
             conversationsList.innerHTML = `
-                <div class="empty-state-small">
-                    <p>No conversations yet</p>
-                    <button id="start-conversation-btn" class="btn btn-sm">Start a conversation</button>
+            <div class="empty-state conversations-empty-state"> {/* Added specific class */}
+                <div class="empty-state-icon" style="font-size: 2rem; margin-bottom: 0.75rem;"> {/* Inline style for smaller icon */}
+                    <i class="far fa-comments"></i> {/* Message icon */}
                 </div>
-            `;
-            
-            // Add event listener to the new button
+                <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">No Conversations Yet</h3>
+                <p style="font-size: 0.9rem; margin-bottom: 1rem;">Start a new chat using the button below.</p>
+                <button id="start-conversation-btn" class="btn btn-primary btn-sm"> {/* Added btn-sm */}
+                    <i class="fas fa-plus"></i> New Chat {/* Changed text/icon */}
+                </button>
+            </div>
+        `;
+
+            // Re-attach event listener to the new button (important!)
             const startConversationBtn = document.getElementById('start-conversation-btn');
             if (startConversationBtn) {
                 startConversationBtn.addEventListener('click', function() {
+                    // Ensure the modal opening logic is correctly handled
+                    // (assuming openModal function exists from main.js)
                     openModal('new-message-modal');
+                    // Optionally focus the search input
+                    document.getElementById('recipient-search')?.focus();
                 });
             }
             return;
         }
-        
+
         let html = '';
         conversationsData.forEach(conversation => {
-            const unreadBadge = conversation.unread_count > 0 
-                ? `<span class="unread-badge">${conversation.unread_count}</span>` 
+            const unreadBadge = conversation.unread_count > 0
+                ? `<span class="unread-badge">${conversation.unread_count}</span>`
                 : '';
-                
+
+            // Use the updated class names from messages.php CSS
             html += `
-                <div class="conversation-item${partnerId == conversation.user_id ? ' active' : ''}" data-user-id="${conversation.user_id}">
-                    <div class="conversation-avatar">
-                        <img src="${conversation.avatar}" alt="${conversation.username}">
+            <div class="conversation-item${partnerId == conversation.user_id ? ' active' : ''}" data-user-id="${conversation.user_id}">
+                <div class="conversation-avatar">
+                    <img src="${conversation.avatar}" alt="${conversation.username}">
+                </div>
+                <div class="conversation-info">
+                    <div class="conversation-info-header">
+                        <h4 class="conversation-name">${conversation.username}</h4>
+                        <span class="conversation-time">${conversation.time_ago}</span>
                     </div>
-                    <div class="conversation-info">
-                        <div class="conversation-header">
-                            <h4 class="conversation-name">${conversation.username}</h4>
-                            <span class="conversation-time">${conversation.time_ago}</span>
-                        </div>
-                        <div class="conversation-preview">
-                            <p>${truncateText(conversation.last_message, 40)}</p>
-                            ${unreadBadge}
-                        </div>
+                    <div class="conversation-preview">
+                        <p>${truncateText(conversation.last_message, 30)}</p> {/* Adjusted truncation */}
+                        ${unreadBadge}
                     </div>
                 </div>
-            `;
+            </div>
+        `;
         });
-        
+
         conversationsList.innerHTML = html;
-        
+
         // Add event listeners to conversation items
         document.querySelectorAll('.conversation-item').forEach(item => {
             item.addEventListener('click', function() {
@@ -109,6 +121,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = `messages.php?user_id=${userId}`;
             });
         });
+    }
+
+    /**
+     * Truncate text to specified length
+     * @param {string} text - Text to truncate
+     * @param {number} length - Maximum length
+     * @return {string} Truncated text
+     */
+    function truncateText(text, length) {
+        if (!text) return ''; // Handle null/undefined text
+        // Basic HTML tag stripping might be needed if messages can contain HTML
+        const strippedText = text.replace(/<[^>]*>?/gm, '');
+        if (strippedText.length <= length) return strippedText;
+        return strippedText.substring(0, length) + '...';
     }
     
     /**

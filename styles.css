@@ -2875,3 +2875,47 @@ input::placeholder, textarea::placeholder {
     vertical-align: middle; /* Align picker trigger with label */
     margin-left: 10px;
 }
+
+.conversations-list .empty-state { /* Target empty state within the list */
+    padding: 2rem 1rem; /* Adjust padding for sidebar */
+    text-align: center;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%; /* Try to fill the container */
+    box-sizing: border-box; /* Include padding in height */
+}
+
+.conversations-list .empty-state .empty-state-icon i {
+    font-size: 2.5rem; /* Slightly smaller icon */
+    margin-bottom: 1rem;
+    color: var(--border);
+}
+
+.conversations-list .empty-state h3 {
+    font-size: 1.1rem; /* Slightly smaller heading */
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.conversations-list .empty-state p {
+    font-size: 0.9rem; /* Slightly smaller text */
+    margin-bottom: 1.25rem;
+    max-width: 200px; /* Limit width */
+    line-height: 1.4;
+}
+
+.conversations-list .empty-state .btn {
+    margin-top: 0;
+    /* Ensure btn-sm styles are defined in main styles.css if used */
+}
+.btn-sm { /* Example if not already defined */
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 4px;
+}
+.btn i { /* Ensure icon spacing in buttons */
+    margin-right: 0.4rem;
+}
