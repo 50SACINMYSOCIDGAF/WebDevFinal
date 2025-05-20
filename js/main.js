@@ -6,7 +6,10 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Toast notification system
     const notificationContainer = document.getElementById('notification-container');
-    
+
+    // Retrieve CSRF token once the DOM is loaded and make it accessible globally within this script's scope
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+
     /**
      * Shows a toast notification
      * @param {string} message - The notification message
@@ -16,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showNotification = function(message, type = 'info', duration = 5000) {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
-        
+
         let icon = '';
         switch(type) {
             case 'success':
@@ -31,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
             default:
                 icon = 'fa-info-circle';
         }
-        
+
         notification.innerHTML = `
             <div class="notification-header">
                 <div class="notification-title">
@@ -44,28 +47,28 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="notification-message">${message}</div>
         `;
-        
+
         notificationContainer.appendChild(notification);
-        
+
         // Close button click event
         const closeButton = notification.querySelector('.notification-close');
         closeButton.addEventListener('click', function() {
             closeNotification(notification);
         });
-        
+
         // Auto close after duration
         setTimeout(() => {
             closeNotification(notification);
         }, duration);
     };
-    
+
     /**
      * Closes a notification with animation
      * @param {Element} notification - The notification element to close
      */
     function closeNotification(notification) {
         notification.classList.add('closing');
-        
+
         // Remove from DOM after animation completes
         setTimeout(() => {
             if (notification.parentNode) {
@@ -81,12 +84,17 @@ document.addEventListener('DOMContentLoaded', function() {
      * @returns {Promise<Object>} - Fetch promise resolving with parsed JSON
      */
     window.fetchWithCSRF = function(url, options = {}) {
-        const csrfToken = document.querySelector('input[name="csrf_token"]')?.value; // Get token if needed
-
-        // Default options
+        // Ensure headers object exists
         options.headers = options.headers || {};
-        options.headers['X-CSRF-Token'] = csrfToken;
-        // *** ADD THIS LINE: Identify the request as AJAX ***
+
+        // Add CSRF token to headers
+        if (csrfToken) {
+            options.headers['X-CSRF-Token'] = csrfToken;
+        } else {
+            console.warn("CSRF token not found. Request might fail.");
+        }
+
+        // Identify the request as AJAX
         options.headers['X-Requested-With'] = 'XMLHttpRequest';
 
         // Ensure credentials are sent if needed (e.g., for sessions)
@@ -120,39 +128,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw error;
             });
     };
-    
+
     /**
      * Helper to submit forms via AJAX with proper CSRF handling
+     * This function now correctly uses fetchWithCSRF.
      * @param {HTMLFormElement} form - The form element
      * @returns {Promise} - Fetch promise with JSON response
      */
     window.submitFormAjax = function(form) {
         const formData = new FormData(form);
-        
-        return fetch(form.action, {
+
+        return window.fetchWithCSRF(form.action, { // Use fetchWithCSRF here
             method: form.method || 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-Token': csrfToken
-            }
+            body: formData
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .catch(error => {
-            console.error('Form submission error:', error);
-            throw error;
-        });
+            .catch(error => {
+                console.error('Form submission error:', error);
+                throw error;
+            });
     };
-    
+
     /**
      * Modal system
      */
     const modalOverlays = document.querySelectorAll('.modal-overlay');
-    
+
     modalOverlays.forEach(overlay => {
         // Close modal when clicking outside
         overlay.addEventListener('click', function(e) {
@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeModal(overlay);
             }
         });
-        
+
         // Close button functionality
         const closeButtons = overlay.querySelectorAll('.modal-close');
         closeButtons.forEach(button => {
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
-    
+
     /**
      * Opens a modal by ID
      * @param {string} modalId - The ID of the modal to open
@@ -177,11 +177,11 @@ document.addEventListener('DOMContentLoaded', function() {
     window.openModal = function(modalId) {
         const modal = document.getElementById(modalId);
         if (!modal) return;
-        
+
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     };
-    
+
     /**
      * Closes a modal
      * @param {Element} modal - The modal element to close
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.classList.remove('active');
         document.body.style.overflow = '';
     };
-    
+
     /**
      * Dropdown menu system
      */
@@ -203,58 +203,69 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-    
+
     // Initialize dropdown toggles
     const dropdownToggles = document.querySelectorAll('[data-toggle="dropdown"]');
     dropdownToggles.forEach(toggle => {
         toggle.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             const targetId = this.getAttribute('data-target');
             const target = document.getElementById(targetId);
-            
+
             if (target) {
                 target.classList.toggle('show');
             }
         });
     });
-    
+
     /**
      * Friend request functionality
+     * Note: This block might be redundant if friend actions are handled by profile.js/friends.js
+     * and use the more generic fetchWithCSRF directly.
+     * Keeping it here for now as it was part of the original main.js.
      */
     const addFriendButtons = document.querySelectorAll('.add-friend');
-    
+
     addFriendButtons.forEach(button => {
         button.addEventListener('click', function() {
             const userId = this.getAttribute('data-user-id');
-            
-            fetchWithCSRF(`ajax/friend_request.php?user_id=${userId}`, {
-                method: 'POST'
+
+            // This needs to send a POST request with CSRF token in body or header
+            // The original code here was missing the CSRF token in the body.
+            // Using fetchWithCSRF now handles the header token.
+            fetchWithCSRF(`ajax/friend_request.php?user_id=${userId}`, { // This should ideally be a POST with body
+                method: 'POST',
+                headers: {
+                    // fetchWithCSRF already adds X-CSRF-Token
+                    'Content-Type': 'application/x-www-form-urlencoded' // Specify content type for POST body
+                },
+                body: `user_id=${userId}&action=add` // Explicitly send action and user_id in body
             })
-            .then(data => {
-                if (data.success) {
-                    this.textContent = 'Requested';
-                    this.classList.add('pending');
-                    this.disabled = true;
-                    showNotification(data.message, 'success');
-                } else {
-                    showNotification(data.message, 'error');
-                }
-            })
-            .catch(error => {
-                showNotification('Something went wrong. Please try again.', 'error');
-            });
+                .then(data => {
+                    if (data.success) {
+                        this.textContent = 'Requested';
+                        this.classList.add('pending');
+                        this.disabled = true;
+                        showNotification(data.message, 'success');
+                    } else {
+                        showNotification(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Something went wrong. Please try again.', 'error');
+                });
         });
     });
-    
+
     /**
      * Navigation handling
      */
-    // Highlight active navbar link
+        // Highlight active navbar link
     const currentPage = window.location.pathname.split('/').pop();
     const navLinks = document.querySelectorAll('.nav-link');
-    
+
     navLinks.forEach(link => {
         const href = link.getAttribute('href');
         if (href === currentPage || (currentPage === '' && href === 'index.php')) {

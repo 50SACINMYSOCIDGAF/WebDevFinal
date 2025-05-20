@@ -74,18 +74,25 @@ $csrf_token = generateCSRFToken();
     <title>ConnectHub | Home</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
-    <!-- Add Google Fonts for custom fonts support -->
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Comfortaa:wght@400;600&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* This ensures Font Awesome icons render correctly if the font isn't loaded by default */
+        .fas {
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900; /* For solid icons */
+        }
+        .far {
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 400; /* For regular icons */
+        }
+    </style>
 </head>
 <body>
-    <!-- Include navbar -->
     <?php include 'components/navbar.php'; ?>
 
     <div class="page-container">
         <div class="container">
-            <!-- Left Sidebar -->
             <aside class="sidebar left-sidebar">
-                <!-- User Shortcuts -->
                 <div class="sidebar-card">
                     <div class="sidebar-content">
                         <a href="profile.php" class="sidebar-item">
@@ -95,7 +102,7 @@ $csrf_token = generateCSRFToken();
                                 <div class="sidebar-item-subtitle">View your profile</div>
                             </div>
                         </a>
-                        
+
                         <a href="friends.php" class="sidebar-item">
                             <i class="fas fa-user-friends"></i>
                             <div class="sidebar-item-content">
@@ -103,7 +110,7 @@ $csrf_token = generateCSRFToken();
                                 <div class="sidebar-item-subtitle">See all friends</div>
                             </div>
                         </a>
-                        
+
                         <a href="saved.php" class="sidebar-item">
                             <i class="fas fa-bookmark"></i>
                             <div class="sidebar-item-content">
@@ -111,7 +118,7 @@ $csrf_token = generateCSRFToken();
                                 <div class="sidebar-item-subtitle">Your saved posts</div>
                             </div>
                         </a>
-                        
+
                         <a href="groups.php" class="sidebar-item">
                             <i class="fas fa-users"></i>
                             <div class="sidebar-item-content">
@@ -119,7 +126,7 @@ $csrf_token = generateCSRFToken();
                                 <div class="sidebar-item-subtitle">Your communities</div>
                             </div>
                         </a>
-                        
+
                         <a href="events.php" class="sidebar-item">
                             <i class="fas fa-calendar-alt"></i>
                             <div class="sidebar-item-content">
@@ -129,8 +136,7 @@ $csrf_token = generateCSRFToken();
                         </a>
                     </div>
                 </div>
-                
-                <!-- Trending Topics -->
+
                 <div class="sidebar-card">
                     <div class="sidebar-header">
                         <div class="sidebar-title">Trending Topics</div>
@@ -161,9 +167,7 @@ $csrf_token = generateCSRFToken();
                 </div>
             </aside>
 
-            <!-- Main Feed -->
             <main class="main-content">
-                <!-- Create Post -->
                 <div class="post-creator">
                     <div class="post-input-container">
                         <img src="<?php echo $avatar_url; ?>" alt="Your profile" class="user-avatar">
@@ -205,7 +209,6 @@ $csrf_token = generateCSRFToken();
                     </div>
                 </div>
 
-                <!-- Post Creation Modal -->
                 <div class="modal-overlay" id="create-post-modal">
                     <div class="modal">
                         <div class="modal-header">
@@ -216,7 +219,7 @@ $csrf_token = generateCSRFToken();
                             <form id="post-form" method="post" action="ajax/create_post.php" enctype="multipart/form-data">
                                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                                 <input type="hidden" name="privacy" id="post-privacy-value" value="public">
-                                
+
                                 <div class="post-creator-header">
                                     <img src="<?php echo $avatar_url; ?>" alt="Your profile" class="user-avatar">
                                     <div>
@@ -227,16 +230,16 @@ $csrf_token = generateCSRFToken();
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <textarea name="content" id="post-content" placeholder="What's on your mind, <?php echo htmlspecialchars($user['username']); ?>?" rows="5" class="post-textarea"></textarea>
-                                
+
                                 <div id="post-image-preview" class="post-image-preview" style="display: none;">
                                     <img id="image-preview" src="#" alt="Preview">
                                     <button type="button" id="remove-image" class="remove-image-btn">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </div>
-                                
+
                                 <div id="post-location-container" class="post-location" style="display: none;">
                                     <i class="fas fa-map-marker-alt"></i>
                                     <span id="location-text" class="post-location-text">Add your location</span>
@@ -244,17 +247,17 @@ $csrf_token = generateCSRFToken();
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </div>
-                                
+
                                 <input type="hidden" name="location_lat" id="location-lat">
                                 <input type="hidden" name="location_lng" id="location-lng">
                                 <input type="hidden" name="location_name" id="location-name">
-                                
+
                                 <div class="post-form-actions">
                                     <div class="post-form-label">Add to your post</div>
                                     <div class="post-form-buttons">
                                         <div class="file-input-container">
                                             <input type="file" name="post_image" id="post-image-input" class="file-input" accept="image/*">
-                                            <button type="button" class="action-button">
+                                            <button type="button" class="action-button" id="post-image-upload-button">
                                                 <i class="fas fa-image"></i>
                                             </button>
                                         </div>
@@ -270,8 +273,7 @@ $csrf_token = generateCSRFToken();
                         </div>
                     </div>
                 </div>
-                
-                <!-- Location Picker Modal -->
+
                 <div class="modal-overlay" id="location-modal">
                     <div class="modal">
                         <div class="modal-header">
@@ -294,9 +296,7 @@ $csrf_token = generateCSRFToken();
                     </div>
                 </div>
 
-                <!-- Posts Feed -->
                 <div class="posts-feed">
-                    <!-- Dynamic content: Posts will be loaded here -->
                     <?php if ($posts_result->num_rows === 0): ?>
                         <div class="empty-state">
                             <div class="empty-state-icon">
@@ -315,9 +315,9 @@ $csrf_token = generateCSRFToken();
                                         <div class="post-meta">
                                             <span class="post-time"><?php echo formatTimeAgo($post['created_at']); ?></span>
                                             <span class="post-privacy">
-                                                <i class="fas <?php 
-                                                    echo $post['privacy'] === 'public' ? 'fa-globe-americas' : 
-                                                        ($post['privacy'] === 'friends' ? 'fa-user-friends' : 'fa-lock'); 
+                                                <i class="fas <?php
+                                                    echo $post['privacy'] === 'public' ? 'fa-globe-americas' :
+                                                        ($post['privacy'] === 'friends' ? 'fa-user-friends' : 'fa-lock');
                                                 ?>"></i>
                                             </span>
                                         </div>
@@ -347,11 +347,11 @@ $csrf_token = generateCSRFToken();
                                         <?php endif; ?>
                                     </div>
                                 </div>
-                                
+
                                 <div class="post-content">
                                     <?php echo nl2br(htmlspecialchars($post['content'])); ?>
                                 </div>
-                                
+
                                 <?php if (!empty($post['image'])): ?>
                                     <div class="post-media">
                                         <div class="post-image-container">
@@ -359,7 +359,7 @@ $csrf_token = generateCSRFToken();
                                         </div>
                                     </div>
                                 <?php endif; ?>
-                                
+
                                 <?php if (!empty($post['location_name'])): ?>
                                     <div class="post-location">
                                         <i class="fas fa-map-marker-alt"></i>
@@ -367,32 +367,32 @@ $csrf_token = generateCSRFToken();
                                         <a href="https://maps.google.com/?q=<?php echo $post['location_lat']; ?>,<?php echo $post['location_lng']; ?>" target="_blank" class="post-location-view">View Map</a>
                                     </div>
                                 <?php endif; ?>
-                                
+
                                 <?php
                                 // Get likes and comments count
                                 $conn = getDbConnection();
-                                
+
                                 $likes_stmt = $conn->prepare("SELECT COUNT(*) as count FROM likes WHERE post_id = ?");
                                 $likes_stmt->bind_param("i", $post['id']);
                                 $likes_stmt->execute();
                                 $likes_result = $likes_stmt->get_result();
                                 $likes_count = $likes_result->fetch_assoc()['count'];
-                                
+
                                 $comments_stmt = $conn->prepare("SELECT COUNT(*) as count FROM comments WHERE post_id = ?");
                                 $comments_stmt->bind_param("i", $post['id']);
                                 $comments_stmt->execute();
                                 $comments_result = $comments_stmt->get_result();
                                 $comments_count = $comments_result->fetch_assoc()['count'];
-                                
+
                                 // Check if user liked this post
                                 $user_liked_stmt = $conn->prepare("SELECT id FROM likes WHERE post_id = ? AND user_id = ?");
                                 $user_liked_stmt->bind_param("ii", $post['id'], $_SESSION['user_id']);
                                 $user_liked_stmt->execute();
                                 $user_liked = $user_liked_stmt->get_result()->num_rows > 0;
-                                
+
                                 $conn->close();
                                 ?>
-                                
+
                                 <div class="post-stats">
                                     <div class="post-stat-group">
                                         <button class="stat-button like-button <?php echo $user_liked ? 'active' : ''; ?>" data-post-id="<?php echo $post['id']; ?>">
@@ -409,8 +409,7 @@ $csrf_token = generateCSRFToken();
                                         <span>Share</span>
                                     </button>
                                 </div>
-                                
-                                <!-- Comment section -->
+
                                 <div class="post-comments" id="comments-<?php echo $post['id']; ?>" style="display: none;">
                                     <div class="comments-header">
                                         <h4 class="comments-title">Comments</h4>
@@ -419,14 +418,13 @@ $csrf_token = generateCSRFToken();
                                             <i class="fas fa-caret-down"></i>
                                         </div>
                                     </div>
-                                    
+
                                     <div class="comments-list" id="comments-list-<?php echo $post['id']; ?>">
-                                        <!-- Comments will be loaded here via AJAX -->
                                         <div class="comments-loading">
                                             <i class="fas fa-spinner fa-spin"></i>
                                         </div>
                                     </div>
-                                    
+
                                     <div class="comment-form">
                                         <img src="<?php echo $avatar_url; ?>" alt="Your profile" class="user-avatar-small">
                                         <input type="text" class="comment-input" placeholder="Write a comment..." data-post-id="<?php echo $post['id']; ?>">
@@ -441,9 +439,7 @@ $csrf_token = generateCSRFToken();
                 </div>
             </main>
 
-            <!-- Right Sidebar -->
             <aside class="sidebar right-sidebar">
-                <!-- Friend Suggestions -->
                 <div class="sidebar-card">
                     <div class="sidebar-header">
                         <div class="sidebar-title">People You May Know</div>
@@ -465,8 +461,7 @@ $csrf_token = generateCSRFToken();
                         </div>
                     </div>
                 </div>
-                
-                <!-- Upcoming Events -->
+
                 <div class="sidebar-card">
                     <div class="sidebar-header">
                         <div class="sidebar-title">Upcoming Events</div>
@@ -496,8 +491,7 @@ $csrf_token = generateCSRFToken();
                         </div>
                     </div>
                 </div>
-                
-                <!-- Online Friends -->
+
                 <div class="sidebar-card">
                     <div class="sidebar-header">
                         <div class="sidebar-title">Online Friends</div>
@@ -528,8 +522,7 @@ $csrf_token = generateCSRFToken();
             </aside>
         </div>
     </div>
-    
-    <!-- Report Modal -->
+
     <div class="modal-overlay" id="report-modal">
         <div class="modal modal-small">
             <div class="modal-header">
@@ -540,7 +533,7 @@ $csrf_token = generateCSRFToken();
                 <form id="report-form">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                     <input type="hidden" name="post_id" id="report-post-id">
-                    
+
                     <div class="form-group">
                         <label for="report-reason">Why are you reporting this post?</label>
                         <select name="reason" id="report-reason" class="form-control">
@@ -553,7 +546,7 @@ $csrf_token = generateCSRFToken();
                             <option value="other">Other</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="report-details">Additional details</label>
                         <textarea name="details" id="report-details" rows="4" class="form-control" placeholder="Please provide any additional information..."></textarea>
@@ -566,14 +559,11 @@ $csrf_token = generateCSRFToken();
             </div>
         </div>
     </div>
-    
-    <!-- Notification container for toast notifications -->
+
     <div class="notification-container" id="notification-container"></div>
 
-    <!-- Load Google Maps API -->
     <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places" async defer></script>
-    
-    <!-- Main JS -->
+
     <script src="js/main.js"></script>
     <script src="js/posts.js"></script>
 </body>
