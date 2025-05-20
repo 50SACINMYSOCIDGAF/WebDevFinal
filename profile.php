@@ -29,7 +29,18 @@ $isOwnProfile = $_SESSION['user_id'] === $profile_id;
 // Get friendship status if not own profile
 $friendshipStatus = false;
 if (!$isOwnProfile) {
-    $friendshipStatus = getFriendshipStatus($_SESSION['user_id'], $profile_id);
+    // getFriendshipStatus now returns the full record or false
+    $friendshipRecord = getFriendshipStatus($_SESSION['user_id'], $profile_id);
+    if ($friendshipRecord) {
+        $friendshipStatus = $friendshipRecord['status'];
+        // Store the initiator and target IDs from the friendship record
+        // This is crucial for distinguishing between sent and received pending requests
+        $friendshipInitiatorId = $friendshipRecord['user_id'];
+        $friendshipTargetId = $friendshipRecord['friend_id'];
+    } else {
+        // No friendship record exists, so it's not friends, pending, or blocked
+        $friendshipStatus = false;
+    }
 }
 
 // Get customization settings
@@ -46,32 +57,32 @@ $posts_query = "";
 if ($isOwnProfile) {
     // If viewing own profile, show all posts
     $posts_query = "
-        SELECT p.*, COUNT(l.id) as like_count, COUNT(c.id) as comment_count 
-        FROM posts p 
-        LEFT JOIN likes l ON p.id = l.post_id 
-        LEFT JOIN comments c ON p.id = c.post_id 
-        WHERE p.user_id = ? 
-        GROUP BY p.id 
-        ORDER BY p.created_at DESC 
+        SELECT p.*, COUNT(l.id) as like_count, COUNT(c.id) as comment_count
+        FROM posts p
+        LEFT JOIN likes l ON p.id = l.post_id
+        LEFT JOIN comments c ON p.id = c.post_id
+        WHERE p.user_id = ?
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
         LIMIT 10
     ";
 } else {
     // If viewing someone else's profile, check privacy settings
     $posts_query = "
-        SELECT p.*, COUNT(l.id) as like_count, COUNT(c.id) as comment_count 
-        FROM posts p 
-        LEFT JOIN likes l ON p.id = l.post_id 
-        LEFT JOIN comments c ON p.id = c.post_id 
+        SELECT p.*, COUNT(l.id) as like_count, COUNT(c.id) as comment_count
+        FROM posts p
+        LEFT JOIN likes l ON p.id = l.post_id
+        LEFT JOIN comments c ON p.id = c.post_id
         WHERE p.user_id = ? AND (
-            p.privacy = 'public' 
+            p.privacy = 'public'
             OR (p.privacy = 'friends' AND EXISTS (
-                SELECT 1 FROM friends 
+                SELECT 1 FROM friends
                 WHERE (user_id = ? AND friend_id = ? AND status = 'accepted')
                 OR (user_id = ? AND friend_id = ? AND status = 'accepted')
             ))
         )
-        GROUP BY p.id 
-        ORDER BY p.created_at DESC 
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
         LIMIT 10
     ";
 }
@@ -89,7 +100,7 @@ $posts_result = $stmt->get_result();
 
 // Get user's friends
 $friends_query = "
-    SELECT u.id, u.username, u.profile_picture 
+    SELECT u.id, u.username, u.profile_picture
     FROM users u
     JOIN friends f ON (u.id = f.friend_id OR u.id = f.user_id)
     WHERE (f.user_id = ? OR f.friend_id = ?)
@@ -105,7 +116,7 @@ $friends_result = $friends_stmt->get_result();
 
 // Get user stats
 $stats_query = "
-    SELECT 
+    SELECT
         (SELECT COUNT(*) FROM posts WHERE user_id = ?) as post_count,
         (SELECT COUNT(*) FROM friends WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted') as friend_count,
         (SELECT COUNT(*) FROM likes WHERE user_id = ?) as like_count
@@ -130,19 +141,15 @@ $conn->close();
     <title><?php echo htmlspecialchars($profile_user['username']); ?>'s Profile - ConnectHub</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
-    <!-- Add Google Fonts for custom fonts support -->
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Comfortaa:wght@400;600&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
-    <!-- User's custom CSS -->
     <style>
         <?php echo $customCSS; ?>
     </style>
 </head>
 <body>
-    <!-- Include navbar -->
     <?php include 'components/navbar.php'; ?>
-    
+
     <div class="page-container">
-        <!-- Profile Cover and Header -->
         <div class="profile-container">
             <div class="profile-cover-container">
                 <?php if (!empty($profile_user['cover_photo'])): ?>
@@ -152,7 +159,7 @@ $conn->close();
                         <i class="fas fa-image fa-3x"></i>
                     </div>
                 <?php endif; ?>
-                
+
                 <?php if ($isOwnProfile): ?>
                     <div class="cover-edit-overlay">
                         <button class="edit-button" id="edit-cover-btn">
@@ -162,7 +169,7 @@ $conn->close();
                     </div>
                 <?php endif; ?>
             </div>
-            
+
             <div class="profile-header">
                 <div class="profile-picture-container">
                     <?php if (!empty($profile_user['profile_picture'])): ?>
@@ -172,7 +179,7 @@ $conn->close();
                             <i class="fas fa-user"></i>
                         </div>
                     <?php endif; ?>
-                    
+
                     <?php if ($isOwnProfile): ?>
                         <div class="edit-overlay" id="edit-profile-picture">
                             <button class="edit-button">
@@ -182,7 +189,7 @@ $conn->close();
                         </div>
                     <?php endif; ?>
                 </div>
-                
+
                 <div class="profile-header-content">
                     <div class="profile-info">
                         <h1 class="profile-name">
@@ -191,15 +198,15 @@ $conn->close();
                                 <i class="fas fa-check-circle profile-verified" title="Verified Account"></i>
                             <?php endif; ?>
                         </h1>
-                        
+
                         <?php if (isset($profile_user['tagline'])): ?>
                             <div class="profile-username">@<?php echo htmlspecialchars($profile_user['tagline']); ?></div>
                         <?php endif; ?>
-                        
+
                         <div class="profile-bio">
                             <?php echo !empty($profile_user['bio']) ? nl2br(htmlspecialchars($profile_user['bio'])) : 'No bio yet...'; ?>
                         </div>
-                        
+
                         <div class="profile-meta">
                             <?php if (!empty($profile_user['location'])): ?>
                                 <div class="profile-meta-item">
@@ -207,21 +214,21 @@ $conn->close();
                                     <span><?php echo htmlspecialchars($profile_user['location']); ?></span>
                                 </div>
                             <?php endif; ?>
-                            
+
                             <?php if (!empty($profile_user['website'])): ?>
                                 <div class="profile-meta-item">
                                     <i class="fas fa-link"></i>
                                     <a href="<?php echo htmlspecialchars($profile_user['website']); ?>" target="_blank"><?php echo htmlspecialchars($profile_user['website']); ?></a>
                                 </div>
                             <?php endif; ?>
-                            
+
                             <div class="profile-meta-item">
                                 <i class="fas fa-calendar-alt"></i>
                                 <span>Joined <?php echo date('F Y', strtotime($profile_user['created_at'])); ?></span>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="profile-actions">
                         <?php if ($isOwnProfile): ?>
                             <a href="customize.php" class="profile-action-button profile-action-secondary">
@@ -238,12 +245,12 @@ $conn->close();
                                     <i class="fas fa-user-check"></i>
                                     <span>Friends</span>
                                 </button>
-                            <?php elseif ($friendshipStatus === 'pending' && $friendshipStatus['user_id'] == $_SESSION['user_id']): ?>
+                            <?php elseif ($friendshipStatus === 'pending' && $friendshipInitiatorId === $_SESSION['user_id']): // Current user sent the request ?>
                                 <button class="profile-action-button profile-action-secondary friend-action" data-action="cancel" data-user-id="<?php echo $profile_id; ?>">
                                     <i class="fas fa-user-clock"></i>
                                     <span>Requested</span>
                                 </button>
-                            <?php elseif ($friendshipStatus === 'pending' && $friendshipStatus['friend_id'] == $_SESSION['user_id']): ?>
+                            <?php elseif ($friendshipStatus === 'pending' && $friendshipTargetId === $_SESSION['user_id']): // Current user received the request ?>
                                 <button class="profile-action-button profile-action-primary friend-action" data-action="accept" data-user-id="<?php echo $profile_id; ?>">
                                     <i class="fas fa-user-plus"></i>
                                     <span>Accept Request</span>
@@ -259,12 +266,12 @@ $conn->close();
                                     <span>Add Friend</span>
                                 </button>
                             <?php endif; ?>
-                            
+
                             <button class="profile-action-button profile-action-secondary message-action" data-user-id="<?php echo $profile_id; ?>">
                                 <i class="fas fa-comment"></i>
                                 <span>Message</span>
                             </button>
-                            
+
                             <div class="profile-action-more">
                                 <button class="profile-action-button profile-action-secondary" id="profile-more-btn">
                                     <i class="fas fa-ellipsis-h"></i>
@@ -286,8 +293,7 @@ $conn->close();
                     </div>
                 </div>
             </div>
-            
-            <!-- Profile Stats -->
+
             <div class="profile-stats">
                 <div class="profile-stat">
                     <div class="profile-stat-number"><?php echo number_format($stats['post_count']); ?></div>
@@ -302,8 +308,7 @@ $conn->close();
                     <div class="profile-stat-label">Likes</div>
                 </div>
             </div>
-            
-            <!-- Profile Tabs -->
+
             <div class="profile-tabs">
                 <div class="profile-tab active" data-tab="posts">
                     <i class="fas fa-th"></i>
@@ -330,15 +335,11 @@ $conn->close();
                     </div>
                 <?php endif; ?>
             </div>
-            
-            <!-- Profile Content -->
+
             <div class="profile-content">
-                <!-- Main Content Area -->
                 <div class="profile-main">
-                    <!-- Tab Content: Posts -->
                     <div class="profile-tab-content" id="tab-posts" style="display: block;">
                         <?php if ($isOwnProfile): ?>
-                            <!-- Create Post Box (only for own profile) -->
                             <div class="post-creator">
                                 <div class="post-input-container">
                                     <img src="<?php echo !empty($profile_user['profile_picture']) ? htmlspecialchars($profile_user['profile_picture']) : 'assets/default-avatar.png'; ?>" alt="Your profile" class="user-avatar">
@@ -359,8 +360,7 @@ $conn->close();
                                 </div>
                             </div>
                         <?php endif; ?>
-                        
-                        <!-- Posts -->
+
                         <?php if ($posts_result->num_rows === 0): ?>
                             <div class="empty-state">
                                 <div class="empty-state-icon">
@@ -383,9 +383,9 @@ $conn->close();
                                             <div class="post-meta">
                                                 <span class="post-time"><?php echo formatTimeAgo($post['created_at']); ?></span>
                                                 <span class="post-privacy">
-                                                    <i class="fas <?php 
-                                                        echo $post['privacy'] === 'public' ? 'fa-globe-americas' : 
-                                                            ($post['privacy'] === 'friends' ? 'fa-user-friends' : 'fa-lock'); 
+                                                    <i class="fas <?php
+                                                        echo $post['privacy'] === 'public' ? 'fa-globe-americas' :
+                                                            ($post['privacy'] === 'friends' ? 'fa-user-friends' : 'fa-lock');
                                                     ?>"></i>
                                                 </span>
                                             </div>
@@ -415,11 +415,11 @@ $conn->close();
                                             <?php endif; ?>
                                         </div>
                                     </div>
-                                    
+
                                     <div class="post-content">
                                         <?php echo nl2br(htmlspecialchars($post['content'])); ?>
                                     </div>
-                                    
+
                                     <?php if (!empty($post['image'])): ?>
                                         <div class="post-media">
                                             <div class="post-image-container">
@@ -427,7 +427,7 @@ $conn->close();
                                             </div>
                                         </div>
                                     <?php endif; ?>
-                                    
+
                                     <?php if (!empty($post['location_name'])): ?>
                                         <div class="post-location">
                                             <i class="fas fa-map-marker-alt"></i>
@@ -435,7 +435,7 @@ $conn->close();
                                             <a href="https://maps.google.com/?q=<?php echo $post['location_lat']; ?>,<?php echo $post['location_lng']; ?>" target="_blank" class="post-location-view">View Map</a>
                                         </div>
                                     <?php endif; ?>
-                                    
+
                                     <div class="post-stats">
                                         <div class="post-stat-group">
                                             <?php
@@ -462,8 +462,7 @@ $conn->close();
                                             <span>Share</span>
                                         </button>
                                     </div>
-                                    
-                                    <!-- Comment section (hidden by default) -->
+
                                     <div class="post-comments" id="comments-<?php echo $post['id']; ?>" style="display: none;">
                                         <div class="comments-header">
                                             <h4 class="comments-title">Comments</h4>
@@ -472,13 +471,13 @@ $conn->close();
                                                 <i class="fas fa-caret-down"></i>
                                             </div>
                                         </div>
-                                        
+
                                         <div class="comments-list" id="comments-list-<?php echo $post['id']; ?>">
                                             <div class="comments-loading">
                                                 <i class="fas fa-spinner fa-spin"></i>
                                             </div>
                                         </div>
-                                        
+
                                         <div class="comment-form">
                                             <img src="<?php echo getUserAvatar($_SESSION['user_id']); ?>" alt="Your profile" class="user-avatar-small">
                                             <input type="text" class="comment-input" placeholder="Write a comment..." data-post-id="<?php echo $post['id']; ?>">
@@ -491,16 +490,14 @@ $conn->close();
                             <?php endwhile; ?>
                         <?php endif; ?>
                     </div>
-                    
-                    <!-- Tab Content: Photos -->
+
                     <div class="profile-tab-content" id="tab-photos" style="display: none;">
-                        <!-- Photos grid here -->
                         <div class="photos-grid">
                             <?php
                             // Get user's photos from posts
                             $conn = getDbConnection();
                             $photos_query = "
-                                SELECT image FROM posts 
+                                SELECT image FROM posts
                                 WHERE user_id = ? AND image IS NOT NULL AND image != ''
                                 ORDER BY created_at DESC
                             ";
@@ -509,8 +506,8 @@ $conn->close();
                             $photos_stmt->execute();
                             $photos_result = $photos_stmt->get_result();
                             $conn->close();
-                            
-                            if ($photos_result->num_rows === 0): 
+
+                            if ($photos_result->num_rows === 0):
                             ?>
                                 <div class="empty-state">
                                     <div class="empty-state-icon">
@@ -530,8 +527,7 @@ $conn->close();
                             <?php endif; ?>
                         </div>
                     </div>
-                    
-                    <!-- Tab Content: Friends -->
+
                     <div class="profile-tab-content" id="tab-friends" style="display: none;">
                         <?php if ($friends_result->num_rows === 0): ?>
                             <div class="empty-state">
@@ -557,11 +553,11 @@ $conn->close();
                                             $conn = getDbConnection();
                                             $mutual_query = "
                                                 SELECT COUNT(*) as count FROM (
-                                                    SELECT DISTINCT f1.friend_id 
-                                                    FROM friends f1 
+                                                    SELECT DISTINCT f1.friend_id
+                                                    FROM friends f1
                                                     WHERE f1.user_id = ? AND f1.status = 'accepted'
                                                     AND f1.friend_id IN (
-                                                        SELECT f2.friend_id FROM friends f2 
+                                                        SELECT f2.friend_id FROM friends f2
                                                         WHERE f2.user_id = ? AND f2.status = 'accepted'
                                                     )
                                                 ) as mutual
@@ -572,7 +568,7 @@ $conn->close();
                                             $mutual_result = $mutual_stmt->get_result();
                                             $mutual_count = $mutual_result->fetch_assoc()['count'];
                                             $conn->close();
-                                            
+
                                             echo $mutual_count > 0 ? $mutual_count . ' mutual ' . ($mutual_count == 1 ? 'friend' : 'friends') : 'Friends since ' . date('M Y');
                                             ?>
                                         </div>
@@ -581,16 +577,15 @@ $conn->close();
                             </div>
                         <?php endif; ?>
                     </div>
-                    
-                    <!-- Tab Content: Saved (Only for own profile) -->
+
                     <?php if ($isOwnProfile): ?>
                         <div class="profile-tab-content" id="tab-saved" style="display: none;">
                             <?php
                             // Get saved posts
                             $conn = getDbConnection();
                             $saved_query = "
-                                SELECT p.*, u.username, u.profile_picture 
-                                FROM posts p 
+                                SELECT p.*, u.username, u.profile_picture
+                                FROM posts p
                                 JOIN users u ON p.user_id = u.id
                                 JOIN saved_posts s ON p.id = s.post_id
                                 WHERE s.user_id = ?
@@ -601,7 +596,7 @@ $conn->close();
                             $saved_stmt->execute();
                             $saved_result = $saved_stmt->get_result();
                             $conn->close();
-                            
+
                             if ($saved_result->num_rows === 0):
                             ?>
                                 <div class="empty-state">
@@ -614,17 +609,14 @@ $conn->close();
                             <?php else: ?>
                                 <div class="saved-posts">
                                     <?php while ($saved_post = $saved_result->fetch_assoc()): ?>
-                                        <!-- Saved post card HTML here (similar to regular post card) -->
                                         <div class="post-card">
-                                            <!-- Post content -->
-                                        </div>
+                                            </div>
                                     <?php endwhile; ?>
                                 </div>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
-                    
-                    <!-- Tab Content: Music (if available) -->
+
                     <?php if (!empty($customization['music_url'])): ?>
                         <div class="profile-tab-content" id="tab-music" style="display: none;">
                             <div class="profile-music">
@@ -654,10 +646,8 @@ $conn->close();
                         </div>
                     <?php endif; ?>
                 </div>
-                
-                <!-- Profile Sidebar -->
+
                 <div class="profile-sidebar">
-                    <!-- About Section -->
                     <div class="sidebar-card">
                         <div class="sidebar-header">
                             <div class="sidebar-title">About</div>
@@ -670,34 +660,34 @@ $conn->close();
                                         <span>Lives in <strong><?php echo htmlspecialchars($profile_user['location']); ?></strong></span>
                                     </li>
                                 <?php endif; ?>
-                                
+
                                 <?php if (!empty($profile_user['birthdate'])): ?>
                                     <li class="about-item">
                                         <i class="fas fa-birthday-cake"></i>
                                         <span>Born on <strong><?php echo date('F j, Y', strtotime($profile_user['birthdate'])); ?></strong></span>
                                     </li>
                                 <?php endif; ?>
-                                
+
                                 <?php if (!empty($profile_user['job_title']) && !empty($profile_user['workplace'])): ?>
                                     <li class="about-item">
                                         <i class="fas fa-briefcase"></i>
                                         <span><strong><?php echo htmlspecialchars($profile_user['job_title']); ?></strong> at <strong><?php echo htmlspecialchars($profile_user['workplace']); ?></strong></span>
                                     </li>
                                 <?php endif; ?>
-                                
+
                                 <?php if (!empty($profile_user['education'])): ?>
                                     <li class="about-item">
                                         <i class="fas fa-graduation-cap"></i>
                                         <span>Studied at <strong><?php echo htmlspecialchars($profile_user['education']); ?></strong></span>
                                     </li>
                                 <?php endif; ?>
-                                
+
                                 <li class="about-item">
                                     <i class="fas fa-clock"></i>
                                     <span>Joined <strong><?php echo date('F Y', strtotime($profile_user['created_at'])); ?></strong></span>
                                 </li>
                             </ul>
-                            
+
                             <?php if ($isOwnProfile): ?>
                                 <button class="edit-about-btn">
                                     <i class="fas fa-pencil-alt"></i>
@@ -706,8 +696,7 @@ $conn->close();
                             <?php endif; ?>
                         </div>
                     </div>
-                    
-                    <!-- Friends Preview -->
+
                     <div class="sidebar-card">
                         <div class="sidebar-header">
                             <div class="sidebar-title">Friends</div>
@@ -721,7 +710,7 @@ $conn->close();
                                     <?php
                                     // Reset result pointer
                                     $friends_result->data_seek(0);
-                                    while ($friend = $friends_result->fetch_assoc()): 
+                                    while ($friend = $friends_result->fetch_assoc()):
                                     ?>
                                         <a href="profile.php?id=<?php echo $friend['id']; ?>" class="friend-preview">
                                             <img src="<?php echo !empty($friend['profile_picture']) ? htmlspecialchars($friend['profile_picture']) : 'assets/default-avatar.png'; ?>" alt="<?php echo htmlspecialchars($friend['username']); ?>" class="friend-preview-avatar">
@@ -732,8 +721,7 @@ $conn->close();
                             <?php endif; ?>
                         </div>
                     </div>
-                    
-                    <!-- Photos Preview -->
+
                     <div class="sidebar-card">
                         <div class="sidebar-header">
                             <div class="sidebar-title">Photos</div>
@@ -743,7 +731,7 @@ $conn->close();
                             <?php
                             $conn = getDbConnection();
                             $photos_query = "
-                                SELECT image FROM posts 
+                                SELECT image FROM posts
                                 WHERE user_id = ? AND image IS NOT NULL AND image != ''
                                 ORDER BY created_at DESC
                                 LIMIT 9
@@ -753,7 +741,7 @@ $conn->close();
                             $photos_stmt->execute();
                             $photos_preview = $photos_stmt->get_result();
                             $conn->close();
-                            
+
                             if ($photos_preview->num_rows === 0):
                             ?>
                                 <p class="no-photos">No photos to show</p>
@@ -772,8 +760,7 @@ $conn->close();
             </div>
         </div>
     </div>
-    
-    <!-- Edit Profile Picture Modal -->
+
     <div class="modal-overlay" id="profile-picture-modal">
         <div class="modal modal-small">
             <div class="modal-header">
@@ -784,13 +771,13 @@ $conn->close();
                 <form id="profile-picture-form" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                     <input type="hidden" name="action" value="update_profile_picture">
-                    
+
                     <div class="file-upload-preview">
                         <div id="profile-preview-container">
                             <img id="profile-preview" src="<?php echo !empty($profile_user['profile_picture']) ? htmlspecialchars($profile_user['profile_picture']) : 'assets/default-avatar.png'; ?>" alt="Preview">
                         </div>
                     </div>
-                    
+
                     <div class="file-input-container">
                         <input type="file" name="profile_picture" id="profile-picture-input" class="file-input" accept="image/*">
                         <button type="button" class="upload-button">
@@ -806,8 +793,7 @@ $conn->close();
             </div>
         </div>
     </div>
-    
-    <!-- Edit Cover Photo Modal -->
+
     <div class="modal-overlay" id="cover-photo-modal">
         <div class="modal">
             <div class="modal-header">
@@ -818,7 +804,7 @@ $conn->close();
                 <form id="cover-photo-form" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                     <input type="hidden" name="action" value="update_cover_photo">
-                    
+
                     <div class="file-upload-preview">
                         <div id="cover-preview-container">
                             <?php if (!empty($profile_user['cover_photo'])): ?>
@@ -831,7 +817,7 @@ $conn->close();
                             <?php endif; ?>
                         </div>
                     </div>
-                    
+
                     <div class="file-input-container">
                         <input type="file" name="cover_photo" id="cover-photo-input" class="file-input" accept="image/*">
                         <button type="button" class="upload-button">
@@ -847,8 +833,7 @@ $conn->close();
             </div>
         </div>
     </div>
-    
-    <!-- Edit Bio Modal -->
+
     <div class="modal-overlay" id="bio-modal">
         <div class="modal modal-small">
             <div class="modal-header">
@@ -859,7 +844,7 @@ $conn->close();
                 <form id="bio-form">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                     <input type="hidden" name="action" value="update_bio">
-                    
+
                     <div class="form-group">
                         <label for="bio-text">Bio</label>
                         <textarea name="bio" id="bio-text" rows="5" class="form-control" placeholder="Write something about yourself..."><?php echo htmlspecialchars($profile_user['bio'] ?? ''); ?></textarea>
@@ -873,8 +858,7 @@ $conn->close();
             </div>
         </div>
     </div>
-    
-    <!-- Report User Modal -->
+
     <div class="modal-overlay" id="report-user-modal">
         <div class="modal modal-small">
             <div class="modal-header">
@@ -885,7 +869,7 @@ $conn->close();
                 <form id="report-user-form">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                     <input type="hidden" name="user_id" value="<?php echo $profile_id; ?>">
-                    
+
                     <div class="form-group">
                         <label for="report-reason">Why are you reporting this user?</label>
                         <select name="reason" id="report-reason" class="form-control">
@@ -897,7 +881,7 @@ $conn->close();
                             <option value="other">Other</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="report-details">Additional details</label>
                         <textarea name="details" id="report-details" rows="4" class="form-control" placeholder="Please provide any additional information..."></textarea>
@@ -910,11 +894,9 @@ $conn->close();
             </div>
         </div>
     </div>
-    
-    <!-- Notification container for toast notifications -->
+
     <div class="notification-container" id="notification-container"></div>
 
-    <!-- Include scripts -->
     <script src="js/main.js"></script>
     <script src="js/posts.js"></script>
     <script src="js/profile.js"></script>

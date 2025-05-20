@@ -161,30 +161,32 @@ function getUserCustomization($userId) {
 }
 
 /**
- * Check if a user is friends with another user
+ * Check if a user is friends with another user or if a request is pending.
  * @param int $userId Current user ID
  * @param int $friendId Friend user ID to check
- * @return string|bool Status of friendship or false if not friends
+ * @return array|bool An associative array of the friendship record if found, or false otherwise.
+ * The array will contain 'id', 'user_id', 'friend_id', 'status', 'created_at', 'updated_at'.
+ * 'user_id' is the ID of the user who initiated the friendship/request.
  */
 function getFriendshipStatus($userId, $friendId) {
     $conn = getDbConnection();
-    
+
     // Check if there's a friendship record in either direction
     $stmt = $conn->prepare("
-        SELECT status FROM friends 
-        WHERE (user_id = ? AND friend_id = ?) 
+        SELECT id, user_id, friend_id, status, created_at, updated_at FROM friends
+        WHERE (user_id = ? AND friend_id = ?)
            OR (user_id = ? AND friend_id = ?)
     ");
     $stmt->bind_param("iiii", $userId, $friendId, $friendId, $userId);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     if ($result->num_rows > 0) {
         $friendship = $result->fetch_assoc();
         $conn->close();
-        return $friendship['status'];
+        return $friendship; // Return the full record
     }
-    
+
     $conn->close();
     return false;
 }
@@ -197,18 +199,18 @@ function getFriendshipStatus($userId, $friendId) {
  */
 function isUserBlocked($userId, $targetId) {
     $conn = getDbConnection();
-    
+
     $stmt = $conn->prepare("
-        SELECT status FROM friends 
+        SELECT status FROM friends
         WHERE user_id = ? AND friend_id = ? AND status = 'blocked'
     ");
     $stmt->bind_param("ii", $userId, $targetId);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     $isBlocked = $result->num_rows > 0;
     $conn->close();
-    
+
     return $isBlocked;
 }
 
@@ -221,7 +223,7 @@ function formatTimeAgo($timestamp) {
     $time = strtotime($timestamp);
     $now = time();
     $diff = $now - $time;
-    
+
     if ($diff < 60) {
         return "just now";
     } elseif ($diff < 3600) {
@@ -269,8 +271,8 @@ function isValidCSRFToken($token) {
 function countUnreadMessages($userId) {
     $conn = getDbConnection();
     $stmt = $conn->prepare("
-        SELECT COUNT(*) as count 
-        FROM messages 
+        SELECT COUNT(*) as count
+        FROM messages
         WHERE receiver_id = ? AND is_read = 0
     ");
     $stmt->bind_param("i", $userId);
@@ -278,7 +280,7 @@ function countUnreadMessages($userId) {
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
     $conn->close();
-    
+
     return $row['count'];
 }
 
@@ -290,8 +292,8 @@ function countUnreadMessages($userId) {
 function countPendingFriendRequests($userId) {
     $conn = getDbConnection();
     $stmt = $conn->prepare("
-        SELECT COUNT(*) as count 
-        FROM friends 
+        SELECT COUNT(*) as count
+        FROM friends
         WHERE friend_id = ? AND status = 'pending'
     ");
     $stmt->bind_param("i", $userId);
@@ -299,7 +301,7 @@ function countPendingFriendRequests($userId) {
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
     $conn->close();
-    
+
     return $row['count'];
 }
 
@@ -310,32 +312,32 @@ function countPendingFriendRequests($userId) {
  */
 function applyUserCustomization($customization) {
     $css = '';
-    
+
     if (!empty($customization['background_image'])) {
         $css .= "body { background-image: url('" . $customization['background_image'] . "'); background-size: cover; background-attachment: fixed; }";
     }
-    
+
     if (!empty($customization['background_color'])) {
         $css .= "body { background-color: " . $customization['background_color'] . "; }";
     }
-    
+
     if (!empty($customization['text_color'])) {
         $css .= "body { color: " . $customization['text_color'] . "; }";
     }
-    
+
     if (!empty($customization['link_color'])) {
         $css .= "a, .link-color { color: " . $customization['link_color'] . "; }";
     }
-    
+
     if (!empty($customization['theme_color'])) {
         $css .= ":root { --accent: " . $customization['theme_color'] . "; --accent-hover: " . adjustBrightness($customization['theme_color'], -15) . "; }";
     }
-    
+
     // Add custom CSS if provided
     if (!empty($customization['custom_css'])) {
         $css .= $customization['custom_css'];
     }
-    
+
     return $css;
 }
 
@@ -348,17 +350,17 @@ function applyUserCustomization($customization) {
 function adjustBrightness($hex, $steps) {
     // Remove # if present
     $hex = ltrim($hex, '#');
-    
+
     // Convert to RGB
     $r = hexdec(substr($hex, 0, 2));
     $g = hexdec(substr($hex, 2, 2));
     $b = hexdec(substr($hex, 4, 2));
-    
+
     // Adjust brightness
     $r = max(0, min(255, $r + $steps));
     $g = max(0, min(255, $g + $steps));
     $b = max(0, min(255, $b + $steps));
-    
+
     // Convert back to hex
     return sprintf("#%02x%02x%02x", $r, $g, $b);
 }
@@ -374,14 +376,14 @@ function adjustBrightness($hex, $steps) {
  */
 function createNotification($userId, $type, $message, $fromUserId = null, $contentId = null) {
     $conn = getDbConnection();
-    
+
     $stmt = $conn->prepare("
         INSERT INTO notifications (user_id, from_user_id, type, message, content_id, created_at)
         VALUES (?, ?, ?, ?, ?, NOW())
     ");
     $stmt->bind_param("iissi", $userId, $fromUserId, $type, $message, $contentId);
     $success = $stmt->execute();
-    
+
     $conn->close();
     return $success;
 }
@@ -395,10 +397,10 @@ function createNotification($userId, $type, $message, $fromUserId = null, $conte
  */
 function setInsertTimestamps($table, &$data) {
     $now = date('Y-m-d H:i:s');
-    
+
     // Add created_at timestamp for all tables
     $data['created_at'] = $now;
-    
+
     // Add table-specific timestamps
     switch ($table) {
         case 'posts':
@@ -407,7 +409,7 @@ function setInsertTimestamps($table, &$data) {
         case 'user_customization':
             $data['updated_at'] = $now;
             break;
-            
+
         case 'saved_posts':
             $data['saved_at'] = $now;
             break;
@@ -423,7 +425,7 @@ function setInsertTimestamps($table, &$data) {
  */
 function setUpdateTimestamps($table, &$data) {
     $now = date('Y-m-d H:i:s');
-    
+
     // Add updated_at timestamp for tables that have it
     switch ($table) {
         case 'posts':
@@ -434,4 +436,3 @@ function setUpdateTimestamps($table, &$data) {
             break;
     }
 }
-?>
