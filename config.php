@@ -179,12 +179,44 @@ try {
             UNIQUE(user_id, post_id)
         )
     ");
-    
+
+    // NEW: Create events table
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS events (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id INT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            event_date DATE NOT NULL,
+            event_time TIME,
+            location_name VARCHAR(255),
+            location_lat DECIMAL(10, 8),
+            location_lng DECIMAL(11, 8),
+            privacy ENUM('public', 'friends', 'private') DEFAULT 'public',
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ");
+
+    // NEW: Create event_attendees table
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS event_attendees (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            event_id INT NOT NULL,
+            user_id INT NOT NULL,
+            status ENUM('going', 'interested') DEFAULT 'going',
+            created_at DATETIME NULL,
+            FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(event_id, user_id)
+        )
+    ");
+
     // We'll manually handle the timestamps in code instead of using triggers
     // to maintain compatibility with older MariaDB versions
-    
+
     $conn->close();
 } catch (Exception $e) {
     die("Database setup failed: " . $e->getMessage());
 }
-?>

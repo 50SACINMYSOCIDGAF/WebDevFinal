@@ -61,6 +61,29 @@ $stmt->bind_param("iii", $_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['
 $stmt->execute();
 $suggested_friends_result = $stmt->get_result();
 
+// NEW: Fetch upcoming events for the sidebar
+$upcoming_events_query = "
+    SELECT e.id, e.title, e.event_date, e.event_time, e.location_name, e.user_id, u.username,
+           (SELECT COUNT(*) FROM event_attendees ea WHERE ea.event_id = e.id AND ea.status = 'going') as going_count
+    FROM events e
+    JOIN users u ON e.user_id = u.id
+    WHERE e.event_date >= CURDATE() AND (
+        e.privacy = 'public'
+        OR e.user_id = ?
+        OR (e.privacy = 'friends' AND EXISTS (
+            SELECT 1 FROM friends
+            WHERE (user_id = e.user_id AND friend_id = ? AND status = 'accepted')
+            OR (user_id = ? AND friend_id = e.user_id AND status = 'accepted')
+        ))
+    )
+    ORDER BY e.event_date ASC, e.event_time ASC
+    LIMIT 3
+";
+$stmt = $conn->prepare($upcoming_events_query);
+$stmt->bind_param("iii", $user_id, $user_id, $user_id);
+$stmt->execute();
+$upcoming_events_result = $stmt->get_result();
+
 $conn->close();
 
 // Generate CSRF token for forms
@@ -85,6 +108,54 @@ $csrf_token = generateCSRFToken();
             font-family: 'Font Awesome 6 Free';
             font-weight: 400; /* For regular icons */
         }
+        /* Styling for events in index.php sidebar */
+        .sidebar-card .event-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            transition: background-color var(--transition-fast);
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+        .sidebar-card .event-item:hover {
+            background-color: var(--bg-tertiary);
+        }
+        .sidebar-card .event-date-box {
+            background-color: var(--accent);
+            color: white;
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.2;
+            min-width: 45px; /* Ensure consistent width */
+        }
+        .sidebar-card .event-date-box .month {
+            display: block;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+        }
+        .sidebar-card .event-date-box .day {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .sidebar-card .event-details {
+            flex: 1;
+        }
+        .sidebar-card .event-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+        }
+        .sidebar-card .event-location,
+        .sidebar-card .event-attendees {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -108,22 +179,6 @@ $csrf_token = generateCSRFToken();
                             <div class="sidebar-item-content">
                                 <div class="sidebar-item-title">Friends</div>
                                 <div class="sidebar-item-subtitle">See all friends</div>
-                            </div>
-                        </a>
-
-                        <a href="saved.php" class="sidebar-item">
-                            <i class="fas fa-bookmark"></i>
-                            <div class="sidebar-item-content">
-                                <div class="sidebar-item-title">Saved</div>
-                                <div class="sidebar-item-subtitle">Your saved posts</div>
-                            </div>
-                        </a>
-
-                        <a href="groups.php" class="sidebar-item">
-                            <i class="fas fa-users"></i>
-                            <div class="sidebar-item-content">
-                                <div class="sidebar-item-title">Groups</div>
-                                <div class="sidebar-item-subtitle">Your communities</div>
                             </div>
                         </a>
 
@@ -465,30 +520,28 @@ $csrf_token = generateCSRFToken();
                 <div class="sidebar-card">
                     <div class="sidebar-header">
                         <div class="sidebar-title">Upcoming Events</div>
+                        <a href="events.php" class="view-all">View All</a>
                     </div>
                     <div class="sidebar-content">
-                        <div class="event-item">
-                            <div class="event-date">
-                                <div class="event-month">JUN</div>
-                                <div class="event-day">15</div>
-                            </div>
-                            <div class="event-details">
-                                <div class="event-name">Web Dev Meetup</div>
-                                <div class="event-location">Tech Hub, Downtown</div>
-                                <div class="event-attendees">24 people going</div>
-                            </div>
-                        </div>
-                        <div class="event-item">
-                            <div class="event-date">
-                                <div class="event-month">JUL</div>
-                                <div class="event-day">02</div>
-                            </div>
-                            <div class="event-details">
-                                <div class="event-name">AI Conference 2023</div>
-                                <div class="event-location">Virtual Event</div>
-                                <div class="event-attendees">89 people going</div>
-                            </div>
-                        </div>
+                        <?php if ($upcoming_events_result->num_rows === 0): ?>
+                            <p class="no-events">No upcoming events.</p>
+                        <?php else: ?>
+                            <?php while ($event = $upcoming_events_result->fetch_assoc()): ?>
+                                <a href="events.php?id=<?php echo $event['id']; ?>" class="event-item">
+                                    <div class="event-date-box">
+                                        <span class="month"><?php echo date('M', strtotime($event['event_date'])); ?></span>
+                                        <span class="day"><?php echo date('j', strtotime($event['event_date'])); ?></span>
+                                    </div>
+                                    <div class="event-details">
+                                        <div class="event-name"><?php echo htmlspecialchars($event['title']); ?></div>
+                                        <?php if (!empty($event['location_name'])): ?>
+                                            <div class="event-location"><?php echo htmlspecialchars($event['location_name']); ?></div>
+                                        <?php endif; ?>
+                                        <div class="event-attendees"><?php echo $event['going_count']; ?> people going</div>
+                                    </div>
+                                </a>
+                            <?php endwhile; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 

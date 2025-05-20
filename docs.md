@@ -14,7 +14,7 @@ ConnectHub is a web application built with a traditional LAMP stack (Linux, Apac
 
 * **`js/`**: Contains JavaScript files for client-side logic.
 
-* **`uploads/`**: Directory for user-uploaded content (profile pictures, post images, cover photos).
+* **`uploads/`**: Directory for user-uploaded content (profile pictures, post images, cover photos, event images).
 
 * **Root Directory**: Main PHP pages, configuration, and global functions.
 
@@ -24,7 +24,7 @@ These files are fundamental to the application's operation and are typically inc
 
 ### `config.php`
 
-* **Purpose**: Defines database connection parameters and ensures all necessary database tables (`users`, `posts`, `comments`, `likes`, `messages`, `friends`, `reports`, `user_customization`, `notifications`, `saved_posts`, `remember_tokens`) are created if they don't exist.
+* **Purpose**: Defines database connection parameters and ensures all necessary database tables (`users`, `posts`, `comments`, `likes`, `messages`, `friends`, `reports`, `user_customization`, `notifications`, `saved_posts`, `remember_tokens`, **`events`**, **`event_attendees`**) are created if they don't exist.
 
 * **Availability**: Loaded via `require_once` in `functions.php` and other PHP scripts that need database access.
 
@@ -107,10 +107,8 @@ These files are fundamental to the application's operation and are typically inc
     * `getFriendshipStatus(int $userId, int $friendId)`
 
         * **Purpose**: Determines the friendship status between two users.
-
         * **Expects**: `$userId` (int) - The current user's ID. `$friendId` (int) - The other user's ID.
-
-        * **Returns**: `string|bool` - The status ('pending', 'accepted', 'rejected', 'blocked') or `false` if no record exists.
+        * **Returns**: `array|bool` - An associative array of the friendship record if found (containing `id`, `user_id`, `friend_id`, `status`, `created_at`, `updated_at`), or `false` if no record exists.
 
     * `isUserBlocked(int $userId, int $targetId)`
 
@@ -332,6 +330,17 @@ These scripts handle page-specific interactivity and AJAX calls.
 
     * **Profile Music Player**: Controls playback and progress for the user's profile song.
 
+### `js/events.js`
+
+* **Purpose**: Manages event creation, display, and attendance actions.
+* **Availability**: Linked in `events.php` and `index.php`.
+* **Key Interactions**:
+    * **Create Event Modal**: Opens a modal (`create-event-modal`) for users to create new events.
+    * **Event Image Upload**: Previews selected images for events.
+    * **Event Location Map**: Integrates Google Maps for selecting event locations, updating latitude, longitude, and name.
+    * **Event Submission**: Submits new event data to `ajax/create_event.php`.
+    * **Join/Interested/Leave Event**: Handles user attendance status updates by calling `ajax/join_event.php`.
+
 ## 4. PHP AJAX Endpoints
 
 These scripts are designed to be called by JavaScript via AJAX requests to perform specific server-side operations and return JSON responses.
@@ -416,20 +425,16 @@ These scripts are designed to be called by JavaScript via AJAX requests to perfo
 
     * **Returns**: JSON `{success: bool, message: string, url: string (for images)}` for AJAX requests, or redirects for non-AJAX.
 
-## 5. Admin Panel AJAX Endpoints
+### New PHP AJAX Endpoints for Events
 
-These scripts are specifically for the admin dashboard.
+* **`ajax/create_event.php`**
+    * **Purpose**: Handles the creation of new events, including image upload and database insertion.
+    * **Expects**: `POST` with `title` (string), `event_date` (string), `csrf_token` (string), optional `description` (string), `event_time` (string), `location_name` (string), `location_lat` (float), `location_lng` (float), `privacy` (string), `image` (file).
+    * **Returns**: JSON `{success: bool, message: string, event_id: int}`.
 
-* **`admin/ajax/get_post_stats.php`**
-
-    * **Expects**: `GET` with `range` (string: 'week', 'month', 'year'), `csrf_token` (string).
-
-    * **Returns**: JSON `{success: bool, labels: Array<string>, values: Array<int>, range: string}`.
-
-* **`admin/ajax/get_recent_activity.php`**
-
-    * **Expects**: `GET` with `csrf_token` (string).
-
-    * **Returns**: JSON `{success: bool, html: string}` (HTML string of recent activities).
+* **`ajax/join_event.php`**
+    * **Purpose**: Manages a user's attendance status for an event (going, interested, or leaving).
+    * **Expects**: `POST` with `event_id` (int), `action` (string: 'going', 'interested', 'leave'), `csrf_token` (string).
+    * **Returns**: JSON `{success: bool, message: string, new_status: string}`.
 
 This documentation should provide a solid foundation for understanding the codebase and tackling bug fixes.
