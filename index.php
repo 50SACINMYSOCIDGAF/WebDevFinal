@@ -615,7 +615,7 @@ $csrf_token = generateCSRFToken();
 
     <div class="notification-container" id="notification-container"></div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBx8JE03m1lq_Qw6MYa68VMmXCYgjUheuU&libraries=places" async defer></script>
 
     <script src="js/main.js"></script>
     <script src="js/posts.js"></script>
