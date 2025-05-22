@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const notificationContainer = document.getElementById('notification-container');
 
     // Retrieve CSRF token once the DOM is loaded and make it accessible globally within this script's scope
-    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+    // MODIFIED: Get token by ID
+    const csrfToken = document.getElementById('csrf_token')?.value;
 
     /**
      * Shows a toast notification
@@ -17,6 +18,10 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {number} duration - Duration in milliseconds before auto-close
      */
     window.showNotification = function(message, type = 'info', duration = 5000) {
+        if (!notificationContainer) {
+            console.warn("Notification container not found. Cannot display notification:", message);
+            return;
+        }
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
 
@@ -67,6 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {Element} notification - The notification element to close
      */
     function closeNotification(notification) {
+        if (!notification) return;
         notification.classList.add('closing');
 
         // Remove from DOM after animation completes
@@ -91,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (csrfToken) {
             options.headers['X-CSRF-Token'] = csrfToken;
         } else {
-            console.warn("CSRF token not found. Request might fail.");
+            console.warn("CSRF token not found on page. Request might fail."); // Warning updated
         }
 
         // Identify the request as AJAX
@@ -100,31 +106,47 @@ document.addEventListener('DOMContentLoaded', function() {
         // Ensure credentials are sent if needed (e.g., for sessions)
         options.credentials = options.credentials || 'same-origin';
 
+        console.log("fetchWithCSRF - Options being sent:", JSON.stringify(options, null, 2));
+
         return fetch(url, options)
             .then(response => {
+                const contentType = response.headers.get("content-type");
                 if (!response.ok) {
                     // Attempt to get more info for non-OK responses
                     return response.text().then(text => {
-                        console.error(`HTTP error! Status: ${response.status}, Response: ${text}`);
-                        throw new Error(`HTTP error! Status: ${response.status}`);
+                        console.error(`HTTP error! Status: ${response.status}, URL: ${url}, Response: ${text}`);
+                        // Try to parse as JSON if it's an error response from our API
+                        if (contentType && contentType.indexOf("application/json") !== -1) {
+                            try {
+                                const errorJson = JSON.parse(text);
+                                throw { ...new Error(`HTTP error! Status: ${response.status}`), json: errorJson, status: response.status };
+                            } catch (e) {
+                                // If parsing fails, throw with text
+                                throw { ...new Error(`HTTP error! Status: ${response.status}`), text: text, status: response.status };
+                            }
+                        }
+                        throw { ...new Error(`HTTP error! Status: ${response.status}`), text: text, status: response.status };
                     });
                 }
                 // Check content type before parsing JSON
-                const contentType = response.headers.get("content-type");
                 if (contentType && contentType.indexOf("application/json") !== -1) {
-                    return response.json(); // Parse JSON only if header is correct
+                    return response.json();
                 } else {
-                    // Handle cases where server didn't send JSON
                     return response.text().then(text => {
-                        console.error("Received non-JSON response:", text);
-                        throw new Error("Server did not return JSON.");
+                        console.warn("Received non-JSON response from URL:", url, "Content:", text.substring(0,100)+"..."); // Log a snippet
+                        // If expecting JSON but didn't get it, it's an issue.
+                        // For now, let's return an object indicating it wasn't JSON, or throw an error.
+                        // This depends on how forgiving the calling code should be.
+                        // Throwing an error is generally safer if JSON is strictly expected.
+                        throw new Error("Server did not return JSON as expected. URL: " + url);
                     });
                 }
             })
             .catch(error => {
                 // Log fetch errors (network, CORS) or processing errors
-                console.error('Fetch error in fetchWithCSRF:', error);
+                console.error('Fetch error in fetchWithCSRF for URL:', url, error);
                 // Re-throw the error so calling code's .catch block is triggered
+                // Include more context if available (e.g., error.json or error.text)
                 throw error;
             });
     };
@@ -137,14 +159,17 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     window.submitFormAjax = function(form) {
         const formData = new FormData(form);
+        // If CSRF token input is not part of the form, fetchWithCSRF will add it from header.
+        // If your form *does* include a csrf_token input, FormData will pick it up.
+        // Ensure your backend checks header *or* body for the token.
 
-        return window.fetchWithCSRF(form.action, { // Use fetchWithCSRF here
+        return window.fetchWithCSRF(form.action || window.location.pathname, { // Use current path if form.action is empty
             method: form.method || 'POST',
             body: formData
         })
             .catch(error => {
                 console.error('Form submission error:', error);
-                throw error;
+                throw error; // Re-throw to be caught by caller
             });
     };
 
@@ -165,7 +190,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const closeButtons = overlay.querySelectorAll('.modal-close');
         closeButtons.forEach(button => {
             button.addEventListener('click', function() {
-                closeModal(overlay);
+                const parentModal = this.closest('.modal-overlay');
+                if (parentModal) {
+                    closeModal(parentModal);
+                }
             });
         });
     });
@@ -176,20 +204,31 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     window.openModal = function(modalId) {
         const modal = document.getElementById(modalId);
-        if (!modal) return;
-
+        if (!modal) {
+            console.error("Modal with ID '" + modalId + "' not found.");
+            return;
+        }
         modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
     };
 
     /**
      * Closes a modal
-     * @param {Element} modal - The modal element to close
+     * @param {Element|string} modalOrId - The modal element or its ID to close
      */
-    window.closeModal = function(modal) {
+    window.closeModal = function(modalOrId) {
+        const modal = (typeof modalOrId === 'string') ? document.getElementById(modalOrId) : modalOrId;
+        if (!modal) {
+            console.error("Modal not found for closing:", modalOrId);
+            return;
+        }
         modal.classList.remove('active');
-        document.body.style.overflow = '';
+        // Only reset body overflow if no other modals are active
+        if (!document.querySelector('.modal-overlay.active')) {
+            document.body.style.overflow = '';
+        }
     };
+
 
     /**
      * Dropdown menu system
@@ -197,9 +236,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', function(e) {
         // Close all dropdowns when clicking outside
         if (!e.target.closest('.dropdown-menu') && !e.target.closest('[data-toggle="dropdown"]')) {
-            const dropdowns = document.querySelectorAll('.dropdown-menu.show');
+            const dropdowns = document.querySelectorAll('.dropdown-menu.show, .post-dropdown.show, .profile-more-dropdown.visible'); // Added other dropdowns
             dropdowns.forEach(dropdown => {
                 dropdown.classList.remove('show');
+                dropdown.classList.remove('visible'); // For profile more dropdown
             });
         }
     });
@@ -211,50 +251,83 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             e.stopPropagation();
 
-            const targetId = this.getAttribute('data-target');
+            const targetId = this.getAttribute('data-target') || this.dataset.target; // Prefer data-target
             const target = document.getElementById(targetId);
 
             if (target) {
+                // Close other dropdowns first
+                document.querySelectorAll('.dropdown-menu.show, .post-dropdown.show, .profile-more-dropdown.visible').forEach(d => {
+                    if (d !== target) {
+                        d.classList.remove('show');
+                        d.classList.remove('visible');
+                    }
+                });
                 target.classList.toggle('show');
             }
         });
     });
 
-    /**
-     * Friend request functionality
-     * Note: This block might be redundant if friend actions are handled by profile.js/friends.js
-     * and use the more generic fetchWithCSRF directly.
-     * Keeping it here for now as it was part of the original main.js.
-     */
-    const addFriendButtons = document.querySelectorAll('.add-friend');
+    // Specific handler for navbar user menu, as it was in navbar.php
+    const userMenuTrigger = document.querySelector('.user-menu-trigger');
+    const userDropdownMenu = userMenuTrigger ? userMenuTrigger.nextElementSibling : null; // Assuming it's the next sibling
 
-    addFriendButtons.forEach(button => {
+    if (userMenuTrigger && userDropdownMenu && userDropdownMenu.classList.contains('dropdown-menu')) {
+        userMenuTrigger.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent document click from immediately closing it
+            // Close other dropdowns first
+            document.querySelectorAll('.dropdown-menu.show, .post-dropdown.show, .profile-more-dropdown.visible').forEach(d => {
+                if (d !== userDropdownMenu) {
+                    d.classList.remove('show');
+                    d.classList.remove('visible');
+                }
+            });
+            userDropdownMenu.classList.toggle('show');
+        });
+    }
+
+
+    /**
+     * Friend request functionality (from index.php context, previously in main.js)
+     * This should ideally be in a more specific JS file if it's only for one page,
+     * or ensure the selectors are specific enough.
+     */
+    document.querySelectorAll('.add-friend').forEach(button => { // Make selector more specific if needed
         button.addEventListener('click', function() {
             const userId = this.getAttribute('data-user-id');
+            const originalText = this.textContent;
+            const originalClasses = this.className;
 
-            // This needs to send a POST request with CSRF token in body or header
-            // The original code here was missing the CSRF token in the body.
-            // Using fetchWithCSRF now handles the header token.
-            fetchWithCSRF(`ajax/friend_request.php?user_id=${userId}`, { // This should ideally be a POST with body
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            this.disabled = true;
+
+            const formData = new FormData();
+            formData.append('user_id', userId);
+            formData.append('action', 'add');
+            // CSRF token will be added by fetchWithCSRF in headers
+
+            fetchWithCSRF('ajax/friend_request.php', {
                 method: 'POST',
-                headers: {
-                    // fetchWithCSRF already adds X-CSRF-Token
-                    'Content-Type': 'application/x-www-form-urlencoded' // Specify content type for POST body
-                },
-                body: `user_id=${userId}&action=add` // Explicitly send action and user_id in body
+                body: new URLSearchParams(formData) // Send as x-www-form-urlencoded
             })
                 .then(data => {
                     if (data.success) {
                         this.textContent = 'Requested';
-                        this.classList.add('pending');
-                        this.disabled = true;
+                        this.className = 'friend-button pending'; // Match profile.php button style
+                        this.disabled = true; // Keep disabled after requested
                         showNotification(data.message, 'success');
                     } else {
+                        this.textContent = originalText;
+                        this.className = originalClasses;
+                        this.disabled = false;
                         showNotification(data.message, 'error');
                     }
                 })
                 .catch(error => {
+                    this.textContent = originalText;
+                    this.className = originalClasses;
+                    this.disabled = false;
                     showNotification('Something went wrong. Please try again.', 'error');
+                    console.error("Error in add friend button:", error);
                 });
         });
     });
@@ -262,14 +335,15 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * Navigation handling
      */
-        // Highlight active navbar link
-    const currentPage = window.location.pathname.split('/').pop();
+    const currentPage = window.location.pathname.split('/').pop() || 'index.php'; // Default to index.php if path is empty
     const navLinks = document.querySelectorAll('.nav-link');
 
     navLinks.forEach(link => {
         const href = link.getAttribute('href');
-        if (href === currentPage || (currentPage === '' && href === 'index.php')) {
+        if (href === currentPage) {
             link.classList.add('active');
+        } else {
+            link.classList.remove('active'); // Ensure others are not active
         }
     });
 });

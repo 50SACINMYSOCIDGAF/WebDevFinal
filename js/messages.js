@@ -11,41 +11,42 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendMessageBtn = document.getElementById('send-message');
     const currentUserId = document.getElementById('current-user-id')?.value;
     const partnerId = document.getElementById('partner-id')?.value;
-    const newMessageBtn = document.getElementById('new-message-btn');
+    const newMessageBtnTrigger = document.getElementById('new-message-btn'); // Button that opens modal
     const newMessageModal = document.getElementById('new-message-modal');
-    const recipientSearch = document.getElementById('recipient-search');
-    const recipientResults = document.getElementById('recipient-results');
-    const conversationSearch = document.getElementById('conversation-search');
-    
+    const recipientSearchInput = document.getElementById('recipient-search'); // Input in modal
+    const recipientResultsContainer = document.getElementById('recipient-results'); // Container in modal
+    const conversationSearchInput = document.getElementById('conversation-search'); // Input in sidebar
+
     // Variables
     let conversations = [];
-    let lastMessageId = 0;
+    let lastFetchedMessageId = 0; // Used for fetching messages *after* this ID
+    let oldestMessageId = 0; // Used for fetching messages *before* this ID (pagination)
     let isLoadingMore = false;
     let messagePollingInterval = null;
-    
+
     /**
      * Load all conversations for the current user
      */
     function loadConversations() {
+        if (!conversationsList) return;
+        conversationsList.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><span>Loading conversations...</span></div>';
+
         fetchWithCSRF('ajax/get_conversations.php')
             .then(data => {
                 if (data.success) {
                     conversations = data.conversations;
                     renderConversations(conversations);
-                    
-                    // If in a conversation, highlight it
+
                     if (partnerId) {
-                        const conversationItem = document.querySelector(`.conversation-item[data-user-id="${partnerId}"]`);
-                        if (conversationItem) {
-                            conversationItem.classList.add('active');
-                        }
+                        const activeConv = document.querySelector(`.conversation-item[data-user-id="${partnerId}"]`);
+                        if (activeConv) activeConv.classList.add('active');
                     }
                 } else {
-                    conversationsList.innerHTML = '<div class="error-message">Failed to load conversations</div>';
+                    conversationsList.innerHTML = `<div class="error-message">${data.message || 'Failed to load conversations'}</div>`;
                 }
             })
             .catch(error => {
-                conversationsList.innerHTML = '<div class="error-message">Error loading conversations</div>';
+                conversationsList.innerHTML = '<div class="error-message">Error loading conversations. Please try again.</div>';
                 console.error('Error loading conversations:', error);
             });
     }
@@ -57,30 +58,24 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderConversations(conversationsData) {
         if (!conversationsList) return;
 
-        if (conversationsData.length === 0) {
-            // Use the more structured empty state, similar to friends.php
+        if (!conversationsData || conversationsData.length === 0) {
+            // CORRECTED: Removed JS comments from HTML string
             conversationsList.innerHTML = `
-            <div class="empty-state conversations-empty-state"> {/* Added specific class */}
-                <div class="empty-state-icon" style="font-size: 2rem; margin-bottom: 0.75rem;"> {/* Inline style for smaller icon */}
-                    <i class="far fa-comments"></i> {/* Message icon */}
+            <div class="empty-state conversations-empty-state">
+                <div class="empty-state-icon" style="font-size: 2rem; margin-bottom: 0.75rem;">
+                    <i class="far fa-comments"></i>
                 </div>
                 <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">No Conversations Yet</h3>
                 <p style="font-size: 0.9rem; margin-bottom: 1rem;">Start a new chat using the button below.</p>
-                <button id="start-conversation-btn" class="btn btn-primary btn-sm"> {/* Added btn-sm */}
-                    <i class="fas fa-plus"></i> New Chat {/* Changed text/icon */}
+                <button id="start-conversation-btn-empty" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> New Chat
                 </button>
-            </div>
-        `;
-
-            // Re-attach event listener to the new button (important!)
-            const startConversationBtn = document.getElementById('start-conversation-btn');
-            if (startConversationBtn) {
-                startConversationBtn.addEventListener('click', function() {
-                    // Ensure the modal opening logic is correctly handled
-                    // (assuming openModal function exists from main.js)
-                    openModal('new-message-modal');
-                    // Optionally focus the search input
-                    document.getElementById('recipient-search')?.focus();
+            </div>`;
+            const startConvBtnEmpty = document.getElementById('start-conversation-btn-empty');
+            if (startConvBtnEmpty) {
+                startConvBtnEmpty.addEventListener('click', () => {
+                    if(newMessageModal) openModal('new-message-modal');
+                    if(recipientSearchInput) recipientSearchInput.focus();
                 });
             }
             return;
@@ -91,30 +86,27 @@ document.addEventListener('DOMContentLoaded', function() {
             const unreadBadge = conversation.unread_count > 0
                 ? `<span class="unread-badge">${conversation.unread_count}</span>`
                 : '';
+            const avatarSrc = conversation.avatar || 'assets/default-avatar.png'; // Fallback avatar
 
-            // Use the updated class names from messages.php CSS
             html += `
             <div class="conversation-item${partnerId == conversation.user_id ? ' active' : ''}" data-user-id="${conversation.user_id}">
                 <div class="conversation-avatar">
-                    <img src="${conversation.avatar}" alt="${conversation.username}">
+                    <img src="${avatarSrc}" alt="${conversation.username}">
                 </div>
                 <div class="conversation-info">
                     <div class="conversation-info-header">
                         <h4 class="conversation-name">${conversation.username}</h4>
-                        <span class="conversation-time">${conversation.time_ago}</span>
+                        <span class="conversation-time">${conversation.time_ago || ''}</span>
                     </div>
                     <div class="conversation-preview">
-                        <p>${truncateText(conversation.last_message, 30)}</p> {/* Adjusted truncation */}
+                        <p>${truncateText(conversation.last_message, 30)}</p>
                         ${unreadBadge}
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
         });
-
         conversationsList.innerHTML = html;
 
-        // Add event listeners to conversation items
         document.querySelectorAll('.conversation-item').forEach(item => {
             item.addEventListener('click', function() {
                 const userId = this.getAttribute('data-user-id');
@@ -124,316 +116,334 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * Truncate text to specified length
-     * @param {string} text - Text to truncate
-     * @param {number} length - Maximum length
-     * @return {string} Truncated text
-     */
-    function truncateText(text, length) {
-        if (!text) return ''; // Handle null/undefined text
-        // Basic HTML tag stripping might be needed if messages can contain HTML
-        const strippedText = text.replace(/<[^>]*>?/gm, '');
-        if (strippedText.length <= length) return strippedText;
-        return strippedText.substring(0, length) + '...';
-    }
-    
-    /**
      * Load messages for current conversation
      * @param {boolean} scrollToBottom - Whether to scroll to bottom after loading
      */
     function loadMessages(scrollToBottom = true) {
         if (!partnerId || !messagesThread) return;
-        
+        messagesThread.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><span>Loading messages...</span></div>';
+
         const url = `ajax/get_messages.php?user_id=${partnerId}`;
-        
+
         fetchWithCSRF(url)
             .then(data => {
                 if (data.success) {
                     renderMessages(data.messages, scrollToBottom);
-                    
-                    // Update last message ID for pagination
                     if (data.messages.length > 0) {
-                        const firstMessage = data.messages[0];
-                        lastMessageId = firstMessage.id;
+                        oldestMessageId = data.messages[0].id; // For pagination: oldest is the first in initial load (desc order from server)
+                        lastFetchedMessageId = data.messages[data.messages.length - 1].id; // For polling: newest
+                    } else {
+                        oldestMessageId = 0;
+                        lastFetchedMessageId = 0;
                     }
-                    
-                    // Start message polling for real-time updates
                     startMessagePolling();
                 } else {
-                    messagesThread.innerHTML = '<div class="error-message">Failed to load messages</div>';
+                    messagesThread.innerHTML = `<div class="error-message">${data.message || 'Failed to load messages'}</div>`;
                 }
             })
             .catch(error => {
-                messagesThread.innerHTML = '<div class="error-message">Error loading messages</div>';
+                messagesThread.innerHTML = '<div class="error-message">Error loading messages. Please try again.</div>';
                 console.error('Error loading messages:', error);
             });
     }
-    
+
     /**
      * Load more messages (pagination)
      */
     function loadMoreMessages() {
-        if (!partnerId || isLoadingMore || lastMessageId <= 0) return;
-        
+        if (!partnerId || isLoadingMore || oldestMessageId <= 0) return;
+
         isLoadingMore = true;
         const loadingIndicator = document.createElement('div');
-        loadingIndicator.className = 'loading-indicator';
+        loadingIndicator.className = 'loading-spinner small'; // Use small spinner
         loadingIndicator.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
-        messagesThread.prepend(loadingIndicator);
-        
-        const url = `ajax/get_messages.php?user_id=${partnerId}&before_id=${lastMessageId}`;
-        
+        if (messagesThread) messagesThread.prepend(loadingIndicator);
+
+        const url = `ajax/get_messages.php?user_id=${partnerId}&before_id=${oldestMessageId}`;
+
         fetchWithCSRF(url)
             .then(data => {
-                // Remove loading indicator
                 loadingIndicator.remove();
-                
                 if (data.success) {
-                    // Get current scroll height before adding new messages
-                    const scrollHeightBefore = messagesThread.scrollHeight;
-                    
+                    const scrollHeightBefore = messagesThread ? messagesThread.scrollHeight : 0;
                     if (data.messages.length > 0) {
-                        // Prepend older messages
-                        renderMessages(data.messages, false, true);
-                        
-                        // Update last message ID for pagination
-                        const firstMessage = data.messages[0];
-                        lastMessageId = firstMessage.id;
-                        
-                        // Maintain scroll position
-                        const scrollHeightAfter = messagesThread.scrollHeight;
-                        messagesThread.scrollTop = messagesThread.scrollTop + (scrollHeightAfter - scrollHeightBefore);
+                        renderMessages(data.messages, false, true); // Prepend
+                        oldestMessageId = data.messages[0].id;
+                        if (messagesThread) {
+                            const scrollHeightAfter = messagesThread.scrollHeight;
+                            messagesThread.scrollTop += (scrollHeightAfter - scrollHeightBefore); // Adjust scroll
+                        }
                     } else {
-                        // No more messages
-                        lastMessageId = 0;
+                        oldestMessageId = 0; // No more older messages
                     }
+                } else {
+                    showNotification(data.message || "Could not load older messages.", "error");
                 }
-                
                 isLoadingMore = false;
             })
             .catch(error => {
                 loadingIndicator.remove();
                 isLoadingMore = false;
                 console.error('Error loading more messages:', error);
+                showNotification("Error loading older messages.", "error");
             });
     }
-    
+
     /**
      * Render messages in the thread
-     * @param {Array} messages - List of message data
+     * @param {Array} messagesData - List of message data
      * @param {boolean} scrollToBottom - Whether to scroll to bottom after rendering
      * @param {boolean} prepend - Whether to prepend messages (for pagination)
      */
-    function renderMessages(messages, scrollToBottom = true, prepend = false) {
+    function renderMessages(messagesData, scrollToBottom = true, prepend = false) {
         if (!messagesThread) return;
-        
-        if (messages.length === 0 && !prepend) {
+
+        if (messagesData.length === 0 && !prepend) {
             messagesThread.innerHTML = `
-                <div class="empty-messages">
-                    <div class="empty-state-small">
-                        <i class="far fa-paper-plane"></i>
-                        <p>No messages yet</p>
-                        <p class="text-muted">Start the conversation by sending a message below.</p>
-                    </div>
-                </div>
-            `;
+                <div class="empty-state">
+                     <div class="empty-state-icon"><i class="far fa-comments"></i></div>
+                     <h3>Start of your conversation</h3>
+                     <p>Send a message to get things started.</p>
+                </div>`;
             return;
         }
-        
-        let html = '';
-        let currentDate = '';
-        
-        messages.forEach(message => {
-            const isFromMe = message.sender_id == currentUserId;
-            const messageDate = new Date(message.timestamp).toLocaleDateString();
-            
-            // Add date separator if needed
-            if (messageDate !== currentDate) {
-                html += `
-                    <div class="message-date-separator">
-                        <span>${formatMessageDate(message.timestamp)}</span>
-                    </div>
-                `;
-                currentDate = messageDate;
+
+        let htmlContent = '';
+        let lastMessageDate = '';
+
+        messagesData.forEach(message => {
+            const messageTimestamp = new Date(message.timestamp);
+            const messageDate = messageTimestamp.toLocaleDateString();
+
+            if (messageDate !== lastMessageDate && !prepend) { // Add date separator only for initial load or new messages, not pagination
+                htmlContent += `<div class="message-date-separator"><span>${formatMessageDate(message.timestamp)}</span></div>`;
+                lastMessageDate = messageDate;
             }
-            
-            html += `
-                <div class="message ${isFromMe ? 'message-sent' : 'message-received'}">
-                    ${!isFromMe ? `<img src="${message.sender_avatar}" alt="${message.sender_name}" class="message-avatar">` : ''}
+            if (prepend && messageDate !== (messagesThread.dataset.lastRenderedDate || '')) { // For prepending, only if different from previously rendered top date
+                htmlContent = `<div class="message-date-separator"><span>${formatMessageDate(message.timestamp)}</span></div>` + htmlContent;
+                messagesThread.dataset.lastRenderedDate = messageDate; // Store it
+            }
+
+
+            const isFromMe = message.sender_id == currentUserId;
+            const avatarSrc = (isFromMe ? (document.querySelector('.user-avatar-small')?.src) : message.sender_avatar) || 'assets/default-avatar.png';
+
+            htmlContent += `
+                <div class="message ${isFromMe ? 'message-sent' : 'message-received'}" data-message-id="${message.id}">
+                    ${!isFromMe ? `<img src="${avatarSrc}" alt="${message.sender_name}" class="message-avatar">` : ''}
                     <div class="message-bubble">
-                        <div class="message-text">${message.content}</div>
+                        <div class="message-text">${message.content.replace(/\n/g, '<br>')}</div>
                         <div class="message-meta">
                             <span class="message-time">${formatMessageTime(message.timestamp)}</span>
                             ${isFromMe ? `<span class="message-status">${message.is_read ? '<i class="fas fa-check-double"></i>' : '<i class="fas fa-check"></i>'}</span>` : ''}
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
         });
-        
+
         if (prepend) {
-            // Insert at the beginning for pagination
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-            while (tempDiv.firstChild) {
-                messagesThread.insertBefore(tempDiv.firstChild, messagesThread.firstChild);
-            }
+            const firstChild = messagesThread.firstChild;
+            messagesThread.insertAdjacentHTML('afterbegin', htmlContent);
+            if(firstChild && firstChild.classList.contains('loading-spinner')) firstChild.remove(); // remove spinner if it was prepended
         } else {
-            // Replace all content
-            messagesThread.innerHTML = html;
-            
-            // Scroll to bottom if requested
-            if (scrollToBottom) {
-                messagesThread.scrollTop = messagesThread.scrollHeight;
-            }
+            // If it was empty state, clear it first
+            const emptyState = messagesThread.querySelector('.empty-state');
+            if(emptyState) emptyState.remove();
+            messagesThread.innerHTML = htmlContent;
+        }
+
+        if (scrollToBottom) {
+            messagesThread.scrollTop = messagesThread.scrollHeight;
         }
     }
-    
+
     /**
      * Send a message to the current conversation partner
      */
     function sendMessage() {
-        if (!messageInput || !partnerId) return;
-        
+        if (!messageInput || !partnerId || !sendMessageBtn) return;
+
         const content = messageInput.value.trim();
         if (content === '') return;
-        
+
+        // Get the CSRF token from the hidden input field on the page
+        const csrfTokenFromPage = document.getElementById('csrf_token')?.value; // Ensure this ID exists on messages.php
+
+        if (!csrfTokenFromPage) {
+            showNotification('Security token missing. Please refresh the page.', 'error');
+            console.error('CSRF token input field not found or has no value.');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('receiver_id', partnerId);
         formData.append('content', content);
-        
-        // Optimistic UI update
-        const timestamp = new Date().toISOString();
+        formData.append('csrf_token', csrfTokenFromPage); // Add CSRF token to the form data
+
+        const tempId = 'temp-' + Date.now();
+        const currentUserAvatar = document.querySelector('.user-avatar-small')?.src || // Try to get current user's avatar from navbar
+            document.querySelector('.conversation-avatar img[alt="' + (document.querySelector('.user-name')?.textContent || '') + '"]')?.src || // Try from conversation list if active
+            'assets/default-avatar.png'; // Fallback
+        const currentUserName = document.querySelector('.user-name')?.textContent || 'Me';
+
+
         const optimisticMessage = {
-            id: 'temp-' + Date.now(),
-            sender_id: currentUserId,
-            receiver_id: partnerId,
+            id: tempId,
+            sender_id: currentUserId, // Ensure currentUserId is available in this scope
             content: content,
-            timestamp: timestamp,
-            time_ago: 'just now',
+            timestamp: new Date().toISOString(),
             is_read: false,
-            is_from_me: true
+            sender_avatar: currentUserAvatar,
+            sender_name: currentUserName
         };
-        
-        // Add to UI immediately
         appendMessage(optimisticMessage);
-        
-        // Clear input
+
         messageInput.value = '';
+        messageInput.style.height = 'auto';
         messageInput.focus();
         sendMessageBtn.disabled = true;
-        
-        // Send to server
+
+        // fetchWithCSRF will still try to add the header, which is fine,
+        // but the server will now prioritize the token from the POST body.
         fetchWithCSRF('ajax/send_message.php', {
             method: 'POST',
-            body: formData
+            body: new URLSearchParams(formData) // Send as x-www-form-urlencoded if that's what PHP expects for $_POST easily.
+            // Or just 'body: formData' if PHP handles multipart/form-data from fetch correctly.
+            // For simplicity and compatibility, URLSearchParams is often easier for PHP's $_POST.
         })
-        .then(data => {
-            if (!data.success) {
-                showNotification(data.message || 'Failed to send message', 'error');
-                // Remove optimistic message on failure
-                const tempMessage = document.querySelector(`[data-message-id="temp-${optimisticMessage.id}"]`);
-                if (tempMessage) {
-                    tempMessage.remove();
+            .then(data => {
+                const tempMessageElement = document.querySelector(`.message[data-message-id="${tempId}"]`);
+                if (data.success && data.message_data) {
+                    if (tempMessageElement) {
+                        tempMessageElement.dataset.messageId = data.message_data.id;
+                        // Update other message details if needed from server response
+                        const timeMeta = tempMessageElement.querySelector('.message-time');
+                        if(timeMeta) timeMeta.textContent = formatMessageTime(data.message_data.timestamp); // Or data.message_data.time_ago
+                    }
+                    lastFetchedMessageId = data.message_data.id;
+                    loadConversations(); // Refresh conversation list
+                } else {
+                    showNotification(data.message || 'Failed to send message', 'error');
+                    if (tempMessageElement) tempMessageElement.remove();
                 }
-            }
-        })
-        .catch(error => {
-            showNotification('Error sending message. Please try again.', 'error');
-            console.error('Error sending message:', error);
-        });
+            })
+            .catch(error => {
+                let errorMessage = 'Error sending message. Please try again.';
+                if (error && error.json && error.json.message) {
+                    errorMessage = error.json.message;
+                } else if (error && error.text) {
+                    errorMessage = `Error: ${error.status || 'Network error'}. Could not send message. Response: ${error.text.substring(0,100)}`;
+                } else if (error && error.message) {
+                    errorMessage = error.message;
+                }
+                showNotification(errorMessage, 'error');
+                console.error('Error sending message:', error);
+                const tempMessageElement = document.querySelector(`.message[data-message-id="${tempId}"]`);
+                if (tempMessageElement) tempMessageElement.remove();
+            });
     }
-    
+
     /**
      * Append a single message to the thread
-     * @param {Object} message - Message data
+     * @param {Object} messageData - Message data
      */
-    function appendMessage(message) {
+    function appendMessage(messageData) {
         if (!messagesThread) return;
-        
-        const isFromMe = message.sender_id == currentUserId;
+
+        // Clear empty state if present
+        const emptyState = messagesThread.querySelector('.empty-state');
+        if(emptyState) emptyState.remove();
+
+        const isFromMe = messageData.sender_id == currentUserId;
         const messageElement = document.createElement('div');
         messageElement.className = `message ${isFromMe ? 'message-sent' : 'message-received'}`;
-        messageElement.setAttribute('data-message-id', message.id);
-        
+        messageElement.dataset.messageId = messageData.id; // Use dataset for ID
+
+        const avatarSrc = (isFromMe ? (document.querySelector('.user-avatar-small')?.src) : messageData.sender_avatar) || 'assets/default-avatar.png';
+
         messageElement.innerHTML = `
-            ${!isFromMe ? `<img src="${message.sender_avatar || 'https://via.placeholder.com/50'}" alt="${message.sender_name || 'User'}" class="message-avatar">` : ''}
+            ${!isFromMe ? `<img src="${avatarSrc}" alt="${messageData.sender_name}" class="message-avatar">` : ''}
             <div class="message-bubble">
-                <div class="message-text">${message.content}</div>
+                <div class="message-text">${messageData.content.replace(/\n/g, '<br>')}</div>
                 <div class="message-meta">
-                    <span class="message-time">${formatMessageTime(message.timestamp)}</span>
-                    ${isFromMe ? `<span class="message-status">${message.is_read ? '<i class="fas fa-check-double"></i>' : '<i class="fas fa-check"></i>'}</span>` : ''}
+                    <span class="message-time">${formatMessageTime(messageData.timestamp)}</span>
+                    ${isFromMe ? `<span class="message-status">${messageData.is_read ? '<i class="fas fa-check-double"></i>' : '<i class="fas fa-check"></i>'}</span>` : ''}
                 </div>
-            </div>
-        `;
-        
+            </div>`;
+
         messagesThread.appendChild(messageElement);
         messagesThread.scrollTop = messagesThread.scrollHeight;
     }
-    
+
     /**
      * Start polling for new messages
      */
     function startMessagePolling() {
-        if (messagePollingInterval) {
-            clearInterval(messagePollingInterval);
-        }
-        
-        // Poll every 5 seconds for new messages
+        if (messagePollingInterval) clearInterval(messagePollingInterval);
+
         messagePollingInterval = setInterval(() => {
-            if (!partnerId) return;
-            
-            fetchWithCSRF(`ajax/get_messages.php?user_id=${partnerId}&after_id=${lastMessageId}`)
+            if (!partnerId || document.hidden) return; // Don't poll if page is hidden or no partner
+
+            // Fetch messages after the last one we know about
+            fetchWithCSRF(`ajax/get_messages.php?user_id=${partnerId}&after_id=${lastFetchedMessageId}`)
                 .then(data => {
                     if (data.success && data.messages.length > 0) {
-                        const newMessages = data.messages.filter(msg => 
-                            !document.querySelector(`[data-message-id="${msg.id}"]`));
-                        
-                        // Only append new messages
-                        newMessages.forEach(message => {
-                            appendMessage(message);
+                        data.messages.forEach(message => {
+                            // Only append if message not already on page (handles potential race conditions)
+                            if (!document.querySelector(`.message[data-message-id="${message.id}"]`)) {
+                                appendMessage(message);
+                            }
                         });
-                        
-                        // Update conversations list to show latest message
-                        loadConversations();
+                        if(data.messages.length > 0) {
+                            lastFetchedMessageId = data.messages[data.messages.length - 1].id;
+                        }
+                        loadConversations(); // Refresh conversation list for unread counts/last message
                     }
                 })
-                .catch(error => {
-                    console.error('Error polling messages:', error);
-                });
-        }, 5000);
+                .catch(error => console.error('Error polling messages:', error));
+        }, 5000); // Poll every 5 seconds
     }
-    
+
     /**
      * Search for users to message
      * @param {string} query - Search query
      */
     function searchUsers(query) {
+        if (!recipientResultsContainer || !recipientSearchInput) return;
         if (query.trim() === '') {
-            recipientResults.innerHTML = '';
+            recipientResultsContainer.innerHTML = '';
+            recipientResultsContainer.style.display = 'none';
             return;
         }
-        
-        recipientResults.innerHTML = '<div class="loading-spinner small"><i class="fas fa-circle-notch fa-spin"></i></div>';
-        
-        fetchWithCSRF(`ajax/search.php?q=${encodeURIComponent(query)}&type=users`)
-            .then(data => {
-                if (data.users && data.users.length > 0) {
+
+        recipientResultsContainer.innerHTML = '<div class="loading-spinner small"><i class="fas fa-circle-notch fa-spin"></i></div>';
+        recipientResultsContainer.style.display = 'block';
+
+        fetchWithCSRF(`ajax/search.php?q=${encodeURIComponent(query)}&type=users`) // Assuming search.php can filter by type=users
+            .then(data => { // search.php returns an array directly, not {success:..., users:...}
+                if (Array.isArray(data) && data.length > 0) {
                     let html = '';
-                    data.users.forEach(user => {
-                        html += `
-                            <div class="recipient-item" data-user-id="${user.id}">
-                                <img src="${user.avatar}" alt="${user.username}" class="user-avatar-small">
-                                <div class="recipient-info">
-                                    <div class="recipient-name">${user.username}</div>
-                                    <div class="recipient-meta">${user.full_name || ''}</div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    recipientResults.innerHTML = html;
-                    
-                    // Add click event listeners
+                    // Filter for users, as search.php might return other types too
+                    const users = data.filter(item => item.type === 'user');
+                    if (users.length > 0) {
+                        users.forEach(user => {
+                            // Exclude current user from results
+                            if (user.id.toString() === currentUserId) return;
+
+                            html += `
+                                <div class="recipient-item" data-user-id="${user.id}">
+                                    <img src="${user.image || 'assets/default-avatar.png'}" alt="${user.name}" class="user-avatar-small">
+                                    <div class="recipient-info">
+                                        <div class="recipient-name">${user.name}</div>
+                                        <div class="recipient-meta">${truncateText(user.meta || '', 40)}</div>
+                                    </div>
+                                </div>`;
+                        });
+                        recipientResultsContainer.innerHTML = html;
+                    } else {
+                        recipientResultsContainer.innerHTML = '<div class="no-results">No users found</div>';
+                    }
+
                     document.querySelectorAll('.recipient-item').forEach(item => {
                         item.addEventListener('click', function() {
                             const userId = this.getAttribute('data-user-id');
@@ -441,161 +451,134 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     });
                 } else {
-                    recipientResults.innerHTML = '<div class="no-results">No users found</div>';
+                    recipientResultsContainer.innerHTML = '<div class="no-results">No users found</div>';
                 }
             })
             .catch(error => {
-                recipientResults.innerHTML = '<div class="error-message">Error searching users</div>';
+                recipientResultsContainer.innerHTML = '<div class="error-message">Error searching users</div>';
                 console.error('Error searching users:', error);
             });
     }
-    
+
     /**
      * Search conversations
      * @param {string} query - Search query
      */
     function searchConversations(query) {
         if (!conversations) return;
-        
-        if (query.trim() === '') {
-            renderConversations(conversations);
+        const queryLower = query.toLowerCase();
+
+        if (queryLower.trim() === '') {
+            renderConversations(conversations); // Show all if search is empty
             return;
         }
-        
-        const queryLower = query.toLowerCase();
-        const filtered = conversations.filter(conv => {
-            return conv.username.toLowerCase().includes(queryLower) ||
-                   conv.last_message.toLowerCase().includes(queryLower);
-        });
-        
+
+        const filtered = conversations.filter(conv =>
+            conv.username.toLowerCase().includes(queryLower) ||
+            (conv.last_message && conv.last_message.toLowerCase().includes(queryLower))
+        );
         renderConversations(filtered);
     }
-    
+
     // Event listeners
-    
-    // Send message button
-    if (sendMessageBtn) {
-        sendMessageBtn.addEventListener('click', sendMessage);
-    }
-    
-    // Message input changes
+    if (sendMessageBtn) sendMessageBtn.addEventListener('click', sendMessage);
+
     if (messageInput) {
         messageInput.addEventListener('input', function() {
-            sendMessageBtn.disabled = this.value.trim() === '';
+            if (sendMessageBtn) sendMessageBtn.disabled = this.value.trim() === '';
+            // Auto-resize textarea
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
         });
-        
         messageInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                if (this.value.trim() !== '') {
-                    sendMessage();
-                }
+                if (this.value.trim() !== '') sendMessage();
             }
         });
     }
-    
-    // Scroll to load more messages
+
     if (messagesThread) {
         messagesThread.addEventListener('scroll', function() {
-            if (this.scrollTop === 0 && !isLoadingMore && lastMessageId > 0) {
+            if (this.scrollTop === 0 && !isLoadingMore && oldestMessageId > 0) {
                 loadMoreMessages();
             }
         });
     }
-    
-    // New message button
-    if (newMessageBtn) {
-        newMessageBtn.addEventListener('click', function() {
+
+    if (newMessageBtnTrigger && newMessageModal) {
+        newMessageBtnTrigger.addEventListener('click', () => {
             openModal('new-message-modal');
+            if (recipientSearchInput) recipientSearchInput.focus();
         });
     }
-    
-    // Recipient search
-    if (recipientSearch) {
+
+    if (recipientSearchInput) {
         let searchTimeout;
-        recipientSearch.addEventListener('input', function() {
+        recipientSearchInput.addEventListener('input', function() {
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                searchUsers(this.value);
-            }, 300);
+            searchTimeout = setTimeout(() => searchUsers(this.value), 300);
         });
     }
-    
-    // Conversation search
-    if (conversationSearch) {
-        let searchTimeout;
-        conversationSearch.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                searchConversations(this.value);
-            }, 300);
+
+    if (conversationSearchInput) {
+        let conversationSearchTimeout;
+        conversationSearchInput.addEventListener('input', function() {
+            clearTimeout(conversationSearchTimeout);
+            conversationSearchTimeout = setTimeout(() => searchConversations(this.value), 300);
         });
     }
-    
-    // Load data on page load
+
+    // Initial data load
     loadConversations();
     if (partnerId) {
         loadMessages();
-    }
-    
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', function() {
-        if (messagePollingInterval) {
-            clearInterval(messagePollingInterval);
+    } else {
+        // If no partner selected, clear the message thread and show empty state
+        if (messagesThread) {
+            messagesThread.innerHTML = `
+                <div class="no-conversation-selected">
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i class="far fa-comments"></i></div>
+                        <h2>Your Messages</h2>
+                        <p>Select a conversation or start a new one.</p>
+                        <button id="new-message-btn-main" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> New Message
+                        </button>
+                    </div>
+                </div>`;
+            const newMessageBtnMain = document.getElementById('new-message-btn-main');
+            if (newMessageBtnMain) {
+                newMessageBtnMain.addEventListener('click', () => {
+                    if(newMessageModal) openModal('new-message-modal');
+                    if(recipientSearchInput) recipientSearchInput.focus();
+                });
+            }
         }
+    }
+
+    window.addEventListener('beforeunload', () => {
+        if (messagePollingInterval) clearInterval(messagePollingInterval);
     });
-    
+
     // Helper functions
-    
-    /**
-     * Format message date for display
-     * @param {string} timestamp - ISO timestamp
-     * @return {string} Formatted date
-     */
     function formatMessageDate(timestamp) {
         const date = new Date(timestamp);
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        
-        // Check if date is today
-        if (date.toDateString() === today.toDateString()) {
-            return 'Today';
-        }
-        
-        // Check if date is yesterday
-        if (date.toDateString() === yesterday.toDateString()) {
-            return 'Yesterday';
-        }
-        
-        // Check if date is within the last 7 days
-        const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
-        if (daysDiff < 7) {
-            return date.toLocaleDateString('en-US', { weekday: 'long' });
-        }
-        
-        // Format date for older messages
-        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        if (date.toDateString() === today.toDateString()) return 'Today';
+        if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: (date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined) });
     }
-    
-    /**
-     * Format message time for display
-     * @param {string} timestamp - ISO timestamp
-     * @return {string} Formatted time
-     */
+
     function formatMessageTime(timestamp) {
-        const date = new Date(timestamp);
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        return new Date(timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     }
-    
-    /**
-     * Truncate text to specified length
-     * @param {string} text - Text to truncate
-     * @param {number} length - Maximum length
-     * @return {string} Truncated text
-     */
+
     function truncateText(text, length) {
-        if (text.length <= length) return text;
-        return text.substring(0, length) + '...';
+        if (!text) return '';
+        const strippedText = text.replace(/<[^>]*>?/gm, ''); // Basic HTML stripping
+        return strippedText.length > length ? strippedText.substring(0, length) + '...' : strippedText;
     }
 });

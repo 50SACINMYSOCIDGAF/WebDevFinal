@@ -31,6 +31,8 @@ if ($partner_id > 0 && $partner_id !== $user_id) { // Prevent messaging self
 
 // Generate CSRF token
 $csrf_token = generateCSRFToken();
+error_log("messages.php page load - Session ID: " . session_id());
+error_log("messages.php page load - CSRF Token embedded: " . ($csrf_token ?? 'NOT SET/EMPTY'));
 ?>
 
 <!DOCTYPE html>
