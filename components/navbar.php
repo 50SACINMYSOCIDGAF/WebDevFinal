@@ -8,6 +8,7 @@ require_once __DIR__ . '/../functions.php';
 // Get counts for notifications
 $unread_messages = isLoggedIn() ? countUnreadMessages($_SESSION['user_id']) : 0;
 $friend_requests = isLoggedIn() ? countPendingFriendRequests($_SESSION['user_id']) : 0;
+$unread_notifications = isLoggedIn() ? countUnreadNotifications($_SESSION['user_id']) : 0;
 
 // Get user avatar
 $user_avatar = isLoggedIn() ? getUserAvatar($_SESSION['user_id']) : '';
@@ -46,6 +47,9 @@ $user_avatar = isLoggedIn() ? getUserAvatar($_SESSION['user_id']) : '';
         <a href="notifications.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'notifications.php' ? 'active' : ''; ?>">
             <i class="fas fa-bell"></i>
             <span class="nav-text">Notifications</span>
+            <?php if ($unread_notifications > 0): //  ?>
+                <span class="notification-badge" id="nav-notification-badge"><?php echo $unread_notifications; ?></span>
+            <?php endif; ?>
         </a>
     </div>
     
@@ -68,7 +72,7 @@ $user_avatar = isLoggedIn() ? getUserAvatar($_SESSION['user_id']) : '';
                     <i class="fas fa-cog"></i> Settings
                 </a>
                 <?php if (isAdmin()): ?>
-                <a href="admin/dashboard.php" class="dropdown-item">
+                <a href="admin/index.php" class="dropdown-item">  <?php // I have corrected the link here ?>
                     <i class="fas fa-shield-alt"></i> Admin Dashboard
                 </a>
                 <?php endif; ?>
@@ -90,58 +94,80 @@ document.addEventListener('DOMContentLoaded', function() {
     // Navbar shadow and hide/show on scroll
     const navbar = document.querySelector('.navbar');
     let lastScroll = 0;
-    
+
     window.addEventListener('scroll', () => {
         const currentScroll = window.pageYOffset;
-        
+
         // Add/remove shadow
         if (currentScroll > 0) {
             navbar.classList.add('navbar-shadow');
         } else {
             navbar.classList.remove('navbar-shadow');
         }
-        
+
         // Auto-hide navbar on scroll down, show on scroll up
         if (currentScroll > lastScroll && currentScroll > 100) {
             navbar.classList.add('navbar-hidden');
         } else {
             navbar.classList.remove('navbar-hidden');
         }
-        
+
         lastScroll = currentScroll;
     });
-    
+
     // Toggle user dropdown menu
     const userMenuTrigger = document.querySelector('.user-menu-trigger');
-    const dropdownMenu = document.querySelector('.dropdown-menu');
-    
-    if (userMenuTrigger) {
+    // I have made the selector for the dropdown menu more specific
+    const userDropdownMenu = userMenuTrigger ? userMenuTrigger.closest('.user-menu').querySelector('.dropdown-menu') : null;
+
+    if (userMenuTrigger && userDropdownMenu) {
         userMenuTrigger.addEventListener('click', function(e) {
-            e.stopPropagation();
-            dropdownMenu.classList.toggle('show');
-        });
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function() {
-            dropdownMenu.classList.remove('show');
+            e.stopPropagation(); // Prevent document click listener from closing it immediately
+            // Close other dropdowns on the page (if any were managed by a generic system)
+            // This helps if other dropdowns (like post options, etc.) are open
+            document.querySelectorAll('.dropdown-menu.show, .post-dropdown.show, .profile-more-dropdown.visible').forEach(d => {
+                if (d !== userDropdownMenu) {
+                    d.classList.remove('show');
+                    d.classList.remove('visible');
+                }
+            });
+            userDropdownMenu.classList.toggle('show');
         });
     }
-    
+
+    // This global click listener in navbar.php is specific to its user menu.
+    // The one in main.js can handle other general dropdowns if they use data-toggle attributes.
+    document.addEventListener('click', function(e) {
+        if (userDropdownMenu && userDropdownMenu.classList.contains('show')) {
+            if (userMenuTrigger && !userMenuTrigger.contains(e.target) && !userDropdownMenu.contains(e.target)) {
+                userDropdownMenu.classList.remove('show');
+            }
+        }
+    });
+
     // Live search functionality
     const searchInput = document.getElementById('search-input');
     const searchResults = document.getElementById('search-results');
     let searchTimeout;
-    
-    if (searchInput) {
+
+    if (searchInput && searchResults) { // I have added a check for searchResults
         searchInput.addEventListener('focus', function() {
-            searchResults.style.display = 'block';
+            if (this.value.trim().length >= 2) { // Only show if there's already query text that might have results
+                 searchResults.style.display = 'block';
+            }
         });
-        
+
         searchInput.addEventListener('input', function() {
             clearTimeout(searchTimeout);
+            const query = this.value.trim();
+
+            if (query.length === 0) {
+                searchResults.innerHTML = '';
+                searchResults.style.display = 'none'; // Hide if query is cleared
+                return;
+            }
+
             searchTimeout = setTimeout(() => {
-                const query = this.value.trim();
-                
                 if (query.length >= 2) {
                     // AJAX request for search results
                     fetch('ajax/search.php?q=' + encodeURIComponent(query))
@@ -161,22 +187,27 @@ document.addEventListener('DOMContentLoaded', function() {
                                     `;
                                 });
                                 searchResults.innerHTML = resultsHtml;
+                                searchResults.style.display = 'block'; // Show results
                             } else {
                                 searchResults.innerHTML = '<div class="no-results">No results found</div>';
+                                searchResults.style.display = 'block'; // Show "No results"
                             }
                         })
                         .catch(error => {
                             console.error('Search error:', error);
+                            searchResults.innerHTML = '<div class="no-results">Error fetching results</div>';
+                            searchResults.style.display = 'block'; // Show error
                         });
-                } else if (query.length === 0) {
-                    searchResults.innerHTML = '';
+                } else {
+                     searchResults.innerHTML = ''; // Clear if query is too short
+                     searchResults.style.display = 'none';
                 }
             }, 300);
         });
-        
+
         // Close search results when clicking outside
         document.addEventListener('click', function(e) {
-            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            if (searchInput && searchResults && !searchInput.contains(e.target) && !searchResults.contains(e.target)) {
                 searchResults.style.display = 'none';
             }
         });

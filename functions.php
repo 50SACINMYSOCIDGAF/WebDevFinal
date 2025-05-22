@@ -389,6 +389,117 @@ function createNotification($userId, $type, $message, $fromUserId = null, $conte
 }
 
 /**
+ * Get notifications for a user.
+ *
+ * @param int $userId The ID of the user.
+ * @param bool $unreadOnly Whether to fetch only unread notifications.
+ * @param int $limit Number of notifications to fetch.
+ * @param int $offset Offset for pagination.
+ * @return array An array of notification objects.
+ */
+function getNotifications($userId, $unreadOnly = false, $limit = 20, $offset = 0) {
+    $conn = getDbConnection();
+    $notifications = [];
+    $sql = "SELECT n.*, u.username as from_username, u.profile_picture as from_user_avatar
+            FROM notifications n
+            LEFT JOIN users u ON n.from_user_id = u.id
+            WHERE n.user_id = ? ";
+
+    if ($unreadOnly) {
+        $sql .= " AND n.is_read = 0 ";
+    }
+
+    $sql .= " ORDER BY n.created_at DESC LIMIT ? OFFSET ?";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iii", $userId, $limit, $offset);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        // Construct a link based on notification type
+        $link = '#'; // Default link
+        if ($row['type'] === 'like' || $row['type'] === 'comment' || $row['type'] === 'new_post') {
+            // Assuming content_id stores post_id for these types
+            if (!empty($row['content_id'])) {
+                $link = 'index.php?post=' . $row['content_id']; // Or a more specific post page like post.php?id=
+            }
+        } elseif ($row['type'] === 'friend_request' || $row['type'] === 'friend_accept') {
+            // Assuming from_user_id is relevant for profile link
+            if (!empty($row['from_user_id'])) {
+                $link = 'profile.php?id=' . $row['from_user_id'];
+            }
+        } elseif ($row['type'] === 'new_event' || $row['type'] === 'event_join' || $row['type'] === 'event_going') {
+            // Assuming content_id stores event_id
+             if (!empty($row['content_id'])) {
+                $link = 'events.php?id=' . $row['content_id'];
+            }
+        }
+        // Add more types as needed (e.g., admin reports linking to admin panel)
+
+        $row['link'] = $link;
+        $row['time_ago'] = formatTimeAgo($row['created_at']); // Using existing function
+        $notifications[] = $row;
+    }
+
+    $stmt->close();
+    $conn->close();
+    return $notifications;
+}
+
+/**
+ * Mark a specific notification as read.
+ *
+ * @param int $notificationId The ID of the notification.
+ * @param int $userId The ID of the user who owns the notification.
+ * @return bool True on success, false on failure.
+ */
+function markNotificationAsRead($notificationId, $userId) {
+    $conn = getDbConnection();
+    $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $notificationId, $userId);
+    $success = $stmt->execute();
+    $stmt->close();
+    $conn->close();
+    return $success;
+}
+
+/**
+ * Mark all notifications for a user as read.
+ *
+ * @param int $userId The ID of the user.
+ * @return bool True on success, false on failure.
+ */
+function markAllNotificationsAsRead($userId) {
+    $conn = getDbConnection();
+    $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0");
+    $stmt->bind_param("i", $userId);
+    $success = $stmt->execute();
+    // We can check $stmt->affected_rows to see if any rows were actually updated.
+    $stmt->close();
+    $conn->close();
+    return $success;
+}
+
+/**
+ * Count unread notifications for a user.
+ *
+ * @param int $userId The ID of the user.
+ * @return int The number of unread notifications.
+ */
+function countUnreadNotifications($userId) {
+    $conn = getDbConnection();
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    $conn->close();
+    return $row['count'] ?? 0;
+}
+
+/**
  * Set timestamp fields for insert operations
  * MariaDB compatibility function to replace triggers
  * @param string $table Table name

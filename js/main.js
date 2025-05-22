@@ -267,25 +267,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Specific handler for navbar user menu, as it was in navbar.php
-    const userMenuTrigger = document.querySelector('.user-menu-trigger');
-    const userDropdownMenu = userMenuTrigger ? userMenuTrigger.nextElementSibling : null; // Assuming it's the next sibling
-
-    if (userMenuTrigger && userDropdownMenu && userDropdownMenu.classList.contains('dropdown-menu')) {
-        userMenuTrigger.addEventListener('click', function(e) {
-            e.stopPropagation(); // Prevent document click from immediately closing it
-            // Close other dropdowns first
-            document.querySelectorAll('.dropdown-menu.show, .post-dropdown.show, .profile-more-dropdown.visible').forEach(d => {
-                if (d !== userDropdownMenu) {
-                    d.classList.remove('show');
-                    d.classList.remove('visible');
-                }
-            });
-            userDropdownMenu.classList.toggle('show');
-        });
-    }
-
-
     /**
      * Friend request functionality (from index.php context, previously in main.js)
      * This should ideally be in a more specific JS file if it's only for one page,
