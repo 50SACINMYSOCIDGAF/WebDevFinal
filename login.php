@@ -298,17 +298,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             position: relative;
         }
 
-        .form-group i {
+        .form-group i.fa-user, .form-group i.fa-envelope, .form-group i.fa-lock { /* Specific icons for padding */
             position: absolute;
             color: rgba(255, 255, 255, 0.5);
             left: 12px;
-            top: 14px;
-            font-size: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px; /* Adjusted icon size */
         }
 
         input {
             width: 100%;
-            padding: 12px 12px 12px 40px;
+            padding: 12px 40px 12px 40px; /* Adjusted padding for icon on left and toggle on right */
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
@@ -330,12 +331,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .password-toggle {
             position: absolute;
-            right: 12px;
-            top: 12px;
+            right: 12px; /* Position on the right */
+            top: 50%;
+            transform: translateY(-50%); /* Center vertically */
             color: rgba(255, 255, 255, 0.5);
             cursor: pointer;
-            font-size: 18px;
+            font-size: 16px; /* Adjusted icon size */
+            padding: 5px; /* Add some padding to make it easier to click */
+            z-index: 2; /* Ensure it's above the input field's text */
         }
+
 
         .checkbox-group {
             display: flex;
@@ -465,74 +470,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .register-form {
             display: none;
         }
-        
-        .divider {
-            display: flex;
-            align-items: center;
-            margin: 20px 0;
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 14px;
-        }
-        
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: rgba(255, 255, 255, 0.2);
-        }
-        
-        .divider::before {
-            margin-right: 10px;
-        }
-        
-        .divider::after {
-            margin-left: 10px;
-        }
-        
-        .social-login {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .social-btn {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .social-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-        
-        .social-btn i {
-            margin-right: 8px;
-            font-size: 18px;
-        }
-        
+
         .forgot-password {
             text-align: right;
             margin-bottom: 20px;
         }
-        
+
         .forgot-password a {
             color: rgba(255, 255, 255, 0.7);
             font-size: 14px;
             text-decoration: none;
             transition: color 0.3s;
         }
-        
+
         .forgot-password a:hover {
             color: var(--accent-color);
             text-decoration: underline;
@@ -556,73 +506,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if (isset($error)): ?>
             <div class="error"><?php echo $error; ?></div>
         <?php endif; ?>
-        
+
         <?php if (isset($success)): ?>
             <div class="success"><?php echo $success; ?></div>
         <?php endif; ?>
 
-        <!-- Login Form -->
         <form class="login-form" method="POST" autocomplete="off">
             <input type="hidden" name="action" value="login">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-            
+
             <div class="form-group">
                 <i class="fas fa-user"></i>
                 <input type="text" name="username" placeholder="Username" required>
             </div>
-            
+
             <div class="form-group">
                 <i class="fas fa-lock"></i>
                 <input type="password" name="password" id="login-password" placeholder="Password" required>
                 <i class="fas fa-eye password-toggle" id="login-password-toggle"></i>
             </div>
-            
+
             <div class="checkbox-group">
                 <input type="checkbox" id="remember" name="remember">
                 <label for="remember">Remember me for 30 days</label>
             </div>
-            
+
             <div class="forgot-password">
                 <a href="forgot_password.php">Forgot password?</a>
             </div>
-            
+
             <button type="submit">Sign In</button>
-            
-            <div class="divider">or continue with</div>
-            
-            <div class="social-login">
-                <div class="social-btn">
-                    <i class="fab fa-google"></i> Google
-                </div>
-                <div class="social-btn">
-                    <i class="fab fa-facebook-f"></i> Facebook
-                </div>
-            </div>
-            
+
             <div class="toggle-form" onclick="toggleForms()">Don't have an account? Register</div>
         </form>
 
-        <!-- Registration Form -->
         <form class="register-form" method="POST" autocomplete="off">
             <input type="hidden" name="action" value="register">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-            
+
             <div class="form-group">
                 <i class="fas fa-user"></i>
                 <input type="text" name="username" id="register-username" placeholder="Username" required minlength="3" maxlength="30">
             </div>
-            
+
             <div class="form-group">
                 <i class="fas fa-envelope"></i>
                 <input type="email" name="email" placeholder="Email" required>
             </div>
-            
+
             <div class="form-group">
                 <i class="fas fa-lock"></i>
                 <input type="password" name="password" id="register-password" placeholder="Password" required minlength="8">
                 <i class="fas fa-eye password-toggle" id="register-password-toggle"></i>
             </div>
-            
+
             <div class="password-requirements">
                 <p>Password must contain:</p>
                 <ul>
@@ -633,31 +570,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <li id="special">At least one special character</li>
                 </ul>
             </div>
-            
+
             <div class="form-group">
                 <i class="fas fa-lock"></i>
                 <input type="password" name="confirm_password" id="confirm-password" placeholder="Confirm Password" required>
                 <i class="fas fa-eye password-toggle" id="confirm-password-toggle"></i>
             </div>
-            
+
             <div class="checkbox-group">
                 <input type="checkbox" id="terms" name="terms" required>
                 <label for="terms">I agree to the <a href="#" style="color: var(--accent-color);">Terms of Service</a> and <a href="#" style="color: var(--accent-color);">Privacy Policy</a></label>
             </div>
-            
+
             <button type="submit">Create Account</button>
-            
-            <div class="divider">or register with</div>
-            
-            <div class="social-login">
-                <div class="social-btn">
-                    <i class="fab fa-google"></i> Google
-                </div>
-                <div class="social-btn">
-                    <i class="fab fa-facebook-f"></i> Facebook
-                </div>
-            </div>
-            
+
             <div class="toggle-form" onclick="toggleForms()">Already have an account? Login</div>
         </form>
     </div>
@@ -689,15 +615,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     this.classList.toggle('fa-eye-slash');
                 });
             });
-            
+
             // Password strength validation
             const passwordInput = document.getElementById('register-password');
             const confirmInput = document.getElementById('confirm-password');
-            
+
             if (passwordInput) {
                 passwordInput.addEventListener('input', function() {
                     const password = this.value;
-                    
+
                     // Check length
                     const lengthRequirement = document.getElementById('length');
                     if (password.length >= 8) {
@@ -707,7 +633,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         lengthRequirement.classList.remove('valid');
                         lengthRequirement.innerHTML = 'At least 8 characters';
                     }
-                    
+
                     // Check uppercase
                     const uppercaseRequirement = document.getElementById('uppercase');
                     if (/[A-Z]/.test(password)) {
@@ -717,7 +643,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         uppercaseRequirement.classList.remove('valid');
                         uppercaseRequirement.innerHTML = 'At least one uppercase letter';
                     }
-                    
+
                     // Check lowercase
                     const lowercaseRequirement = document.getElementById('lowercase');
                     if (/[a-z]/.test(password)) {
@@ -727,7 +653,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         lowercaseRequirement.classList.remove('valid');
                         lowercaseRequirement.innerHTML = 'At least one lowercase letter';
                     }
-                    
+
                     // Check number
                     const numberRequirement = document.getElementById('number');
                     if (/[0-9]/.test(password)) {
@@ -737,7 +663,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         numberRequirement.classList.remove('valid');
                         numberRequirement.innerHTML = 'At least one number';
                     }
-                    
+
                     // Check special character
                     const specialRequirement = document.getElementById('special');
                     if (/[^A-Za-z0-9]/.test(password)) {
@@ -748,15 +674,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         specialRequirement.innerHTML = 'At least one special character';
                     }
                 });
-                
+
                 // Check if passwords match
-                confirmInput.addEventListener('input', function() {
-                    if (this.value === passwordInput.value) {
-                        this.style.borderColor = 'var(--success-color)';
-                    } else {
-                        this.style.borderColor = 'var(--error-color)';
-                    }
-                });
+                if (confirmInput) { // Add null check for confirmInput
+                    confirmInput.addEventListener('input', function() {
+                        if (this.value === passwordInput.value) {
+                            this.style.borderColor = 'var(--success-color)';
+                        } else {
+                            this.style.borderColor = 'var(--error-color)';
+                        }
+                    });
+                }
             }
         });
     </script>

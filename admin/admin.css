@@ -7,6 +7,7 @@
 .admin-body {
     background-color: #f4f6f9;
     min-height: 100vh;
+    color: #333; /* Default text color for admin body content */
 }
 
 .admin-container {
@@ -86,7 +87,7 @@
     border-left: 3px solid var(--accent, #4f46e5);
 }
 
-.notification-badge {
+.notification-badge { /* This rule is for the sidebar, color is fine */
     position: absolute;
     right: 15px;
     background-color: #e53e3e;
@@ -136,6 +137,7 @@
     margin-left: 250px;
     padding: 1.5rem;
     max-width: calc(100vw - 250px);
+    color: #333; /* Ensure default text color for content area is dark */
 }
 
 .admin-header {
@@ -149,12 +151,12 @@
     margin: 0 0 0.5rem 0;
     font-size: 1.8rem;
     font-weight: 700;
-    color: #2d3748;
+    color: #2d3748; /* Changed from white/light */
 }
 
 .admin-header-title p {
     margin: 0;
-    color: #718096;
+    color: #718096; /* Good secondary dark color */
     font-size: 0.95rem;
 }
 
@@ -163,6 +165,7 @@
     align-items: center;
     gap: 0.5rem;
     font-weight: 500;
+    color: #2d3748; /* Changed from white/light */
 }
 
 /* Cards */
@@ -172,6 +175,7 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     margin-bottom: 1.5rem;
     overflow: hidden;
+    color: #333; /* Default text color inside cards */
 }
 
 .admin-card-header {
@@ -186,7 +190,7 @@
     margin: 0;
     font-size: 1.1rem;
     font-weight: 600;
-    color: #2d3748;
+    color: #2d3748; /* Ensure card titles are dark */
 }
 
 .admin-card-actions {
@@ -197,6 +201,7 @@
 
 .admin-card-body {
     padding: 1.5rem;
+    color: #333; /* Ensure card body text is dark */
 }
 
 /* Stat Cards */
@@ -230,7 +235,7 @@
     align-items: center;
 }
 
-.stat-icon {
+.stat-icon { /* Icon background color is fine, text on it is white */
     width: 60px;
     height: 60px;
     border-radius: 50%;
@@ -270,28 +275,28 @@
     flex: 1;
 }
 
-.stat-info h3 {
+.stat-info h3 { /* Used for "Total Users" etc. */
     margin: 0 0 0.5rem 0;
     font-size: 1rem;
     font-weight: 600;
-    color: #4b5563;
+    color: #4b5563; /* Ensure this is dark */
 }
 
-.stat-info h4 {
+.stat-info h4 { /* Used in smaller stat cards */
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
     font-weight: 600;
-    color: #4b5563;
+    color: #4b5563; /* Ensure this is dark */
 }
 
 .stat-number {
     font-size: 1.5rem;
     font-weight: 700;
     margin: 0;
-    color: #1f2937;
+    color: #1f2937; /* Main stat number, ensure dark */
 }
 
-.stat-change {
+.stat-change { /* e.g., "+1 new this week" - color is dynamic (positive/negative) which is fine */
     font-size: 0.8rem;
     margin: 0.5rem 0 0 0;
     display: flex;
@@ -307,9 +312,9 @@
     color: #ef4444;
 }
 
-.stat-label {
+.stat-label { /* e.g., "pending review" */
     font-size: 0.8rem;
-    color: #6b7280;
+    color: #6b7280; /* Secondary dark color, fine */
     margin: 0.25rem 0 0 0;
 }
 
@@ -368,11 +373,12 @@
     padding: 0.75rem 1rem;
     text-align: left;
     border-bottom: 1px solid #e2e8f0;
+    color: #333; /* Ensure table text is dark */
 }
 
 .admin-table th {
     font-weight: 600;
-    color: #4b5563;
+    color: #4b5563; /* Table headers dark */
     background-color: #f9fafb;
 }
 
@@ -385,6 +391,11 @@
     align-items: center;
     gap: 0.5rem;
 }
+
+.admin-table .user-cell span { /* Ensure username in table is dark */
+    color: #333;
+}
+
 
 .admin-table .truncate {
     max-width: 250px;
@@ -404,7 +415,7 @@
     white-space: nowrap;
 }
 
-.status-badge {
+.status-badge { /* Badge colors are fine as they have their own backgrounds */
     display: inline-flex;
     align-items: center;
     padding: 0.25rem 0.75rem;
@@ -451,18 +462,18 @@
 
 .status-expiry {
     font-size: 0.7rem;
-    color: #718096;
+    color: #718096; /* Secondary dark color, fine */
     margin-top: 0.25rem;
 }
 
-.admin-role {
-    color: var(--accent, #4f46e5);
+.admin-role { /* e.g. "Admin" text for user role */
+    color: var(--accent, #4f46e5); /* Uses accent color, this should be fine or could be a standard dark text */
     font-weight: 500;
 }
 
-.view-all {
+.view-all { /* "View All" links */
     font-size: 0.9rem;
-    color: var(--accent, #4f46e5);
+    color: var(--accent, #4f46e5); /* Uses accent color, fine */
     text-decoration: none;
 }
 
@@ -470,10 +481,10 @@
     text-decoration: underline;
 }
 
-.no-data {
+.no-data { /* "No users found" etc. */
     text-align: center;
     padding: 2rem;
-    color: #718096;
+    color: #718096; /* Secondary dark color, fine */
     font-style: italic;
 }
 
@@ -496,7 +507,7 @@
     padding-bottom: 0;
 }
 
-.activity-icon {
+.activity-icon { /* Icon background fine, icon color is white */
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -526,18 +537,23 @@
     gap: 0.25rem;
 }
 
-.activity-details p {
+.activity-details p { /* Main text of activity item */
     margin: 0;
+    color: #333; /* Ensure dark */
 }
 
-.activity-time {
+.activity-details p strong { /* Bolded parts like usernames */
+    color: #1f2937; /* Slightly darker for emphasis */
+}
+
+.activity-time { /* "2 hours ago" */
     font-size: 0.8rem;
-    color: #718096;
+    color: #718096; /* Secondary dark color, fine */
 }
 
-.activity-action {
+.activity-action { /* "Review", "View Profile" links */
     font-size: 0.85rem;
-    color: var(--accent, #4f46e5);
+    color: var(--accent, #4f46e5); /* Accent color, fine */
     text-decoration: none;
 }
 
@@ -554,7 +570,7 @@
     margin-top: 1.5rem;
 }
 
-.pagination-link {
+.pagination-link { /* Button text color is dark, background is light, fine */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -572,13 +588,13 @@
     background-color: #e5e7eb;
 }
 
-.pagination-link.active {
+.pagination-link.active { /* Active page number, white text on accent bg, fine */
     background-color: var(--accent, #4f46e5);
     color: #fff;
     border-color: var(--accent, #4f46e5);
 }
 
-.pagination-arrow {
+.pagination-arrow { /* Arrow color is dark, background is light, fine */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -611,16 +627,17 @@
     position: relative;
 }
 
-.search-container input {
+.search-container input { /* Input text color needs to be dark */
     width: 300px;
     height: 36px;
     padding: 0 2.5rem 0 1rem;
     border-radius: 6px;
     border: 1px solid #e5e7eb;
     background-color: #f9fafb;
+    color: #333; /* Dark text for input */
 }
 
-.search-btn {
+.search-btn { /* Icon color is dark, fine */
     position: absolute;
     right: 0;
     top: 0;
@@ -635,7 +652,7 @@
     color: #6b7280;
 }
 
-.select-filter {
+.select-filter { /* Text color is dark, fine */
     height: 36px;
     padding: 0 1rem;
     border-radius: 6px;
@@ -649,20 +666,21 @@
     margin-bottom: 1rem;
 }
 
-.form-group label {
+.form-group label { /* Label text dark, fine */
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 500;
     color: #4b5563;
 }
 
-.form-control {
+.form-control { /* Default input/textarea text color */
     width: 100%;
     padding: 0.625rem 1rem;
     border-radius: 6px;
     border: 1px solid #e5e7eb;
     background-color: #f9fafb;
     transition: border-color 0.2s ease;
+    color: #333; /* Dark text for form controls */
 }
 
 .form-control:focus {
@@ -676,7 +694,7 @@ textarea.form-control {
     resize: vertical;
 }
 
-.form-group small {
+.form-group small { /* Hint text color dark, fine */
     display: block;
     margin-top: 0.25rem;
     font-size: 0.8rem;
@@ -684,7 +702,7 @@ textarea.form-control {
 }
 
 /* Alerts */
-.admin-alert {
+.admin-alert { /* Alert text colors are specific to type (success, error etc), fine */
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -722,7 +740,7 @@ textarea.form-control {
     color: #1e40af;
 }
 
-.close-alert {
+.close-alert { /* Icon color inherits from parent alert, fine */
     position: absolute;
     right: 1rem;
     top: 1rem;
@@ -739,7 +757,7 @@ textarea.form-control {
 }
 
 /* Buttons */
-.btn {
+.btn { /* Default button text color is dark, fine */
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -765,7 +783,7 @@ textarea.form-control {
     border-radius: 4px;
 }
 
-.btn-primary {
+.btn-primary { /* Primary button text is white, background is accent, fine */
     background-color: var(--accent, #4f46e5);
     color: #fff;
     border-color: var(--accent, #4f46e5);
@@ -776,7 +794,7 @@ textarea.form-control {
     border-color: var(--accent-hover, #4338ca);
 }
 
-.btn-danger {
+.btn-danger { /* Danger button text is white, background is red, fine */
     background-color: #ef4444;
     color: #fff;
     border-color: #ef4444;
@@ -787,7 +805,7 @@ textarea.form-control {
     border-color: #dc2626;
 }
 
-.btn-icon {
+.btn-icon { /* Icon color is dark, fine */
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -805,7 +823,7 @@ textarea.form-control {
     background-color: #e5e7eb;
 }
 
-.btn-icon.btn-danger {
+.btn-icon.btn-danger { /* Icon color is red, fine */
     background-color: rgba(239, 68, 68, 0.1);
     color: #ef4444;
     border-color: transparent;
@@ -837,7 +855,7 @@ textarea.form-control {
     visibility: visible;
 }
 
-.modal-container {
+.modal-container { /* Modal content default text color */
     background-color: #fff;
     border-radius: 8px;
     max-width: 500px;
@@ -847,6 +865,7 @@ textarea.form-control {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    color: #333; /* Ensure modal text is dark */
 }
 
 .modal-header {
@@ -857,14 +876,14 @@ textarea.form-control {
     align-items: center;
 }
 
-.modal-header h3 {
+.modal-header h3 { /* Modal title text color */
     margin: 0;
     font-size: 1.1rem;
     font-weight: 600;
-    color: #2d3748;
+    color: #2d3748; /* Dark text */
 }
 
-.modal-close {
+.modal-close { /* Icon color dark, fine */
     background: none;
     border: none;
     color: #6b7280;
@@ -880,6 +899,7 @@ textarea.form-control {
     padding: 1.5rem;
     overflow-y: auto;
     flex: 1;
+    color: #333; /* Ensure modal body text is dark */
 }
 
 .modal-actions {
@@ -912,7 +932,7 @@ textarea.form-control {
 
 .report-time {
     font-size: 0.875rem;
-    color: #6b7280;
+    color: #6b7280; /* Secondary dark, fine */
 }
 
 .report-users {
@@ -928,12 +948,12 @@ textarea.form-control {
 }
 
 .report-user span {
-    color: #6b7280;
+    color: #6b7280; /* Secondary dark, fine */
     font-size: 0.875rem;
 }
 
 .user-link {
-    color: var(--accent, #4f46e5);
+    color: var(--accent, #4f46e5); /* Accent color, fine */
     text-decoration: none;
     font-weight: 500;
 }
@@ -944,27 +964,28 @@ textarea.form-control {
 
 .report-reason h4,
 .reported-content h4,
-.admin-notes h4 {
+.admin-notes h4 { /* Section titles */
     margin: 0 0 0.75rem 0;
     font-size: 1rem;
     font-weight: 600;
-    color: #4b5563;
+    color: #4b5563; /* Dark text */
 }
 
-.report-reason p {
+.report-reason p { /* Reason paragraph */
     margin: 0;
     padding: 1rem;
     background-color: #f9fafb;
     border-radius: 6px;
     white-space: pre-line;
+    color: #333; /* Dark text */
 }
 
-.content-type {
+.content-type { /* "Post", "Comment" badge like elements */
     display: inline-block;
     font-size: 0.875rem;
     padding: 0.25rem 0.75rem;
     background-color: #e5e7eb;
-    color: #4b5563;
+    color: #4b5563; /* Dark text */
     border-radius: 50px;
     margin-bottom: 0.75rem;
 }
@@ -976,8 +997,9 @@ textarea.form-control {
     margin-bottom: 1rem;
 }
 
-.content-preview p {
+.content-preview p { /* Preview text */
     margin: 0;
+    color: #333; /* Dark text */
 }
 
 .content-image {
@@ -1004,7 +1026,7 @@ textarea.form-control {
     margin-bottom: 1.5rem;
 }
 
-.period-link {
+.period-link { /* Text color dark, fine */
     padding: 0.5rem 1rem;
     border-radius: 6px;
     background-color: #f9fafb;
@@ -1018,7 +1040,7 @@ textarea.form-control {
     background-color: #e5e7eb;
 }
 
-.period-link.active {
+.period-link.active { /* Text color white on accent, fine */
     background-color: var(--accent, #4f46e5);
     color: #fff;
     border-color: var(--accent, #4f46e5);
@@ -1052,9 +1074,9 @@ textarea.form-control {
     flex-direction: column;
 }
 
-.top-user-stat {
+.top-user-stat { /* e.g. "X posts" */
     font-size: 0.875rem;
-    color: #6b7280;
+    color: #6b7280; /* Secondary dark, fine */
     margin-top: 0.25rem;
 }
 
@@ -1065,7 +1087,7 @@ textarea.form-control {
     align-items: center;
     justify-content: center;
     padding: 2rem 0;
-    color: #6b7280;
+    color: #6b7280; /* Dark icon and text */
 }
 
 .loading-spinner i {
@@ -1085,7 +1107,7 @@ textarea.form-control {
 .error-message {
     padding: 1rem;
     text-align: center;
-    color: #ef4444;
+    color: #ef4444; /* Error color, fine */
 }
 
 /* Recipients Results */
@@ -1116,17 +1138,18 @@ textarea.form-control {
 
 .recipient-name {
     font-weight: 500;
+    color: #333; /* Dark text */
 }
 
 .recipient-meta {
     font-size: 0.875rem;
-    color: #6b7280;
+    color: #6b7280; /* Secondary dark, fine */
 }
 
-.no-results {
+.no-results { /* "No users found" in search */
     padding: 1rem;
     text-align: center;
-    color: #6b7280;
+    color: #6b7280; /* Secondary dark, fine */
     font-style: italic;
 }
 
@@ -1136,60 +1159,60 @@ textarea.form-control {
         width: 64px;
         overflow: hidden;
     }
-    
+
     .admin-logo {
         justify-content: center;
         padding: 1rem;
     }
-    
+
     .admin-logo h2, .admin-badge {
         display: none;
     }
-    
+
     .admin-nav a {
         padding: 0.75rem;
         justify-content: center;
     }
-    
+
     .admin-nav a span {
         display: none;
     }
-    
+
     .admin-nav a i {
         margin-right: 0;
     }
-    
+
     .admin-sidebar-footer {
         padding: 1rem 0.5rem;
     }
-    
+
     .admin-sidebar-footer a {
         justify-content: center;
     }
-    
+
     .admin-sidebar-footer a span {
         display: none;
     }
-    
+
     .admin-sidebar-footer a i {
         margin-right: 0;
     }
-    
+
     .admin-content {
         margin-left: 64px;
         max-width: calc(100vw - 64px);
     }
-    
+
     .filter-controls {
         flex-direction: column;
         width: 100%;
     }
-    
+
     .filter-form {
         flex-direction: column;
         width: 100%;
     }
-    
+
     .search-container input {
         width: 100%;
     }
@@ -1199,20 +1222,34 @@ textarea.form-control {
     .stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .admin-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
     }
-    
+
     .admin-card-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.75rem;
     }
-    
+
     .search-container {
         width: 100%;
     }
+}
+
+/* Admin Footer */
+.admin-footer {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+}
+
+.admin-footer p {
+    margin: 0;
+    color: #718096; /* Secondary dark color */
+    font-size: 0.9rem;
 }
